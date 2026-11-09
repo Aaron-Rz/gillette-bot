@@ -3,51 +3,60 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Shave Assistant – Gillette at Delhaize</title>
-<meta name="description" content="Student concept: a conversational shopping assistant that helps Delhaize shoppers find the right Gillette product.">
+<title>Gillette Shave Expert</title>
+<meta name="description" content="Student concept: a Gillette shave expert for Delhaize shoppers – chat, skin & beard check from a photo, and AR beard try-on.">
 <meta name="robots" content="noindex">
+<meta name="theme-color" content="#11185D">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600;700;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://static.thcdn.com">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<div class="concept">Student concept · EDHEC · not an official Gillette or Delhaize service · product images © P&amp;G</div>
 <div class="page">
-  <main class="chat" aria-label="Shopping assistant">
+  <main class="chat" aria-label="Gillette shave expert">
     <header class="top">
       <div class="brand">
-        <div class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="5" rx="1.5"/><path d="M7 6.5h10M11 9l-1 11h4l-1-11"/></svg></div>
-        <div>
-          <h1>Sam<span class="h-sub"> · Shave Assistant</span></h1>
-          <p>Gillette at Delhaize · <span class="online">online</span></p>
+        <div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="5" rx="1"/><path d="M7 6.5h10M11 9l-1 11h4l-1-11"/></svg></div>
+        <div class="brand-text">
+          <div class="wordmark">GILLETTE <span>SHAVE EXPERT</span></div>
+          <div class="sub">at Delhaize · <span class="online">Sam is online</span></div>
         </div>
       </div>
       <div class="actions">
-        <button id="crm-toggle" class="icon-btn" aria-expanded="false" aria-controls="crm" title="Show CRM data">CRM</button>
-        <button id="basket-btn" class="icon-btn basket-btn" title="Basket">
+        <button id="crm-toggle" class="icon-btn" aria-expanded="false" aria-controls="crm" title="Behind the scenes">CRM</button>
+        <button id="basket-btn" class="icon-btn" title="Basket" aria-label="Basket">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1.5 11h-11z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
           <span id="basket-count">0</span>
         </button>
         <button id="restart" class="icon-btn" title="Start over" aria-label="Start over">↻</button>
       </div>
     </header>
-    <ol id="steps" class="steps" aria-label="Conversation steps">
-      <li>Welcome</li><li>Needs</li><li>Recommend</li><li>Objections</li><li>Checkout</li><li>Follow-up</li>
-    </ol>
+    <ol id="steps" class="steps" aria-label="Conversation steps"></ol>
     <div id="log" class="log" aria-live="polite"></div>
+    <div id="hint" class="hint" hidden></div>
     <div id="options" class="options"></div>
     <form id="form" class="composer" autocomplete="off">
-      <input id="text" type="text" aria-label="Message" placeholder="Type a message…">
-      <button type="submit" aria-label="Send">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2-6z"/></svg>
-      </button>
+      <label class="attach" title="Send a photo for a skin & beard check">
+        <input id="photo-input" type="file" accept="image/*" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        <span class="sr">Send a photo</span>
+      </label>
+      <input id="text" type="text" aria-label="Message" placeholder="Type a message…" enterkeyhint="send">
+      <button type="submit" class="send" aria-label="Send"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2-6z"/></svg></button>
     </form>
   </main>
 
   <aside id="crm" class="crm" aria-label="Behind the scenes">
     <div class="crm-head">
       <h2>Behind the scenes</h2>
-      <button id="crm-close" class="icon-btn" aria-label="Close">✕</button>
+      <button id="crm-close" class="icon-btn dark" aria-label="Close">✕</button>
     </div>
-    <p class="muted small">What the bot knows and which data drives each message. Not visible to real shoppers.</p>
+    <p class="muted small">What Sam knows and which data drives each message. Not shown to real shoppers.</p>
+    <div id="ai-status" class="ai-status" hidden></div>
     <label class="entry">Entry point
       <select id="entry">
         <option value="web">Website / Delhaize app</option>
@@ -59,11 +68,25 @@
     <ul id="signals" class="signals"></ul>
     <h3>Customer record</h3>
     <div id="profile"></div>
-    <p class="muted small disclaimer">Student project (EDHEC). Not affiliated with Delhaize or Gillette. Demo customers are fictitious.</p>
+    <p class="muted small disclaimer">Student project (EDHEC). Not affiliated with Delhaize or Gillette. Demo customers are fictitious. Prices from delhaize.be (9 Nov 2026) where marked, otherwise indicative.</p>
   </aside>
 </div>
-<footer class="foot">Student project, EDHEC Business School (Omnichannel, E-commerce &amp; Web Marketing). Not affiliated with Delhaize or Gillette. Demo customers are fictitious; prices from delhaize.be (9 Nov 2026), some indicative.</footer>
-<script src="data.js"></script>
-<script src="app.js"></script>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-head">
+      <h2 id="modal-title">Try beard styles</h2>
+      <button id="modal-close" class="icon-btn dark" aria-label="Close">✕</button>
+    </div>
+    <div class="stage">
+      <video id="cam" playsinline muted></video>
+      <canvas id="stage-canvas"></canvas>
+      <div id="stage-msg" class="stage-msg"></div>
+    </div>
+    <div id="modal-controls"></div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
