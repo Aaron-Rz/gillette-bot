@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shave Assistant – Gillette at Delhaize</title>
+<meta name="description" content="Student concept: a conversational shopping assistant that helps Delhaize shoppers find the right Gillette product.">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page">
+  <main class="chat" aria-label="Shopping assistant">
+    <header class="top">
+      <div class="brand">
+        <div class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="5" rx="1.5"/><path d="M7 6.5h10M11 9l-1 11h4l-1-11"/></svg></div>
+        <div>
+          <h1>Sam<span class="h-sub"> · Shave Assistant</span></h1>
+          <p>Gillette at Delhaize · <span class="online">online</span></p>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="crm-toggle" class="icon-btn" aria-expanded="false" aria-controls="crm" title="Show CRM data">CRM</button>
+        <button id="basket-btn" class="icon-btn basket-btn" title="Basket">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1.5 11h-11z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
+          <span id="basket-count">0</span>
+        </button>
+        <button id="restart" class="icon-btn" title="Start over" aria-label="Start over">↻</button>
+      </div>
+    </header>
+    <ol id="steps" class="steps" aria-label="Conversation steps">
+      <li>Welcome</li><li>Needs</li><li>Recommend</li><li>Objections</li><li>Checkout</li><li>Follow-up</li>
+    </ol>
+    <div id="log" class="log" aria-live="polite"></div>
+    <div id="options" class="options"></div>
+    <form id="form" class="composer" autocomplete="off">
+      <input id="text" type="text" aria-label="Message" placeholder="Type a message…">
+      <button type="submit" aria-label="Send">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2-6z"/></svg>
+      </button>
+    </form>
+  </main>
+
+  <aside id="crm" class="crm" aria-label="Behind the scenes">
+    <div class="crm-head">
+      <h2>Behind the scenes</h2>
+      <button id="crm-close" class="icon-btn" aria-label="Close">✕</button>
+    </div>
+    <p class="muted small">What the bot knows and which data drives each message. Not visible to real shoppers.</p>
+    <label class="entry">Entry point
+      <select id="entry">
+        <option value="web">Website / Delhaize app</option>
+        <option value="shelf">QR code at the shaving shelf</option>
+      </select>
+    </label>
+    <h3>Customer record</h3>
+    <div id="profile"></div>
+    <h3>Data used in this chat</h3>
+    <p id="signals-empty" class="muted small">Nothing yet.</p>
+    <ul id="signals" class="signals"></ul>
+    <p class="muted small disclaimer">Student project (EDHEC). Not affiliated with Delhaize or Gillette. Demo customers are fictitious.</p>
+  </aside>
+</div>
+<footer class="foot">Student project, EDHEC Business School (Omnichannel, E-commerce &amp; Web Marketing). Not affiliated with Delhaize or Gillette. Demo customers are fictitious; prices from delhaize.be (9 Nov 2026), some indicative.</footer>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
