@@ -1,9 +1,10 @@
 import { Bot } from "./dialog.js";
 import { UI } from "./ui.js";
 import { CRM } from "./crm.js";
-import { STYLES, SHADES, drawStyle, startLive, resetStrands } from "./ar.js";
+import { STYLES, SHADES, startLive, renderPhoto } from "./ar.js";
 import { initAI } from "./ai.js";
 import { BY_ID } from "./catalog.js";
+import { icon } from "./icons.js";
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
@@ -18,6 +19,7 @@ const ui = new UI({
     ui.user(label);
     if (act === "help") {
       await ui.bot("Sure – just type what you need, for example <i>“where is my order?”</i>, <i>“I want a refund”</i> or <i>“my trimmer stopped working”</i>.");
+      bot.lastOpts = [];
       ui.options([]);
       ui.focusInput("Describe your question…");
       return;
@@ -28,6 +30,7 @@ const ui = new UI({
   camera: () => openModal("snap"),
   openAR: (style) => openModal("ar", style),
   restart: () => restart(),
+  qty: (i, packs) => bot.act("qty", { i, packs }),
 });
 ui.thinking = (on) => {
   const id = "thinking";
@@ -63,7 +66,7 @@ async function handlePhoto(file) {
   try {
     const v = await import("./vision.js");
     a = await v.analyze(img);
-    if (a) { a.image = img; a.source = "device"; }
+    if (a) { a.image = img; a.source = "device"; if (a.hairColor) arState.natural = a.hairColor; }
   } catch (e) {
     console.warn("on-device analysis unavailable", e);
     err = "load";
@@ -79,9 +82,11 @@ async function handlePhoto(file) {
 $("#photo-input").addEventListener("change", (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) handlePhoto(f); });
 
 // ---------- modal: AR try-on + selfie camera ----------
+// The stage canvas is drawn by the WebGL face-mesh renderer (ar-gl.js) for the live camera and for photos alike.
 const modal = $("#modal"), video = $("#cam"), stage = $("#stage-canvas"), msg = $("#stage-msg"), controls = $("#modal-controls");
 let stopLive = null;
-const arState = { style: "short", shade: "brown", photo: null };
+const arState = { style: "short", shade: "natural", natural: null, photo: null, mode: "ar" };
+const shadeValue = () => (arState.shade === "natural" ? arState.natural || SHADES.brown : arState.shade);
 
 function stopModal() {
   if (stopLive) { stopLive(); stopLive = null; }
@@ -93,7 +98,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.h
 
 function renderControls(mode) {
   if (mode === "snap") {
-    controls.innerHTML = `<div class="modal-actions"><button class="btn" id="shutter">📸 Take photo</button><label class="btn ghost">⬆ Upload instead<input type="file" accept="image/*" hidden id="snap-file"></label></div>`;
+    controls.innerHTML = `<div class="modal-actions"><button class="btn" id="shutter">${icon("camera")}Take photo</button><label class="btn ghost">${icon("upload")}Upload instead<input type="file" accept="image/*" hidden id="snap-file"></label></div>`;
     $("#shutter").addEventListener("click", () => {
       stage.toBlob((b) => { stopModal(); if (b) handlePhoto(new File([b], "selfie.jpg", { type: "image/jpeg" })); }, "image/jpeg", 0.92);
     });
@@ -102,60 +107,78 @@ function renderControls(mode) {
   }
   const st = STYLES.find((s) => s.id === arState.style);
   const prods = st.products.map((id) => BY_ID[id]).filter(Boolean);
+  const natural = arState.natural ? `<button class="natural" aria-pressed="${arState.shade === "natural"}" data-c="natural" title="Matches your brows"><i style="background:${arState.natural}"></i>Natural</button>` : "";
   controls.innerHTML = `
     <div class="seg-label">Style</div>
     <div class="seg" id="seg-style">${STYLES.map((s) => `<button aria-pressed="${s.id === arState.style}" data-s="${s.id}">${s.name}</button>`).join("")}</div>
     <div class="seg-label">Beard colour</div>
-    <div class="seg" id="seg-shade">${Object.entries(SHADES).map(([k, c]) => `<button class="swatch" aria-pressed="${k === arState.shade}" data-c="${k}" title="${k}" style="background:${c}"></button>`).join("")}</div>
+    <div class="shade-row" id="seg-shade">${natural}${Object.entries(SHADES).map(([k, c]) => `<button aria-pressed="${k === arState.shade}" data-c="${k}" title="${k}" aria-label="${k}" style="background:${c}"></button>`).join("")}</div>
     <p class="style-note"><b>${st.name}:</b> ${st.note} You'll need: ${prods.map((p) => p.short).join(", ")}.</p>
-    <div class="modal-actions"><button class="btn" id="use-style">Get this look</button><label class="btn ghost">⬆ Use a photo<input type="file" accept="image/*" hidden id="ar-file"></label></div>`;
+    <div class="modal-actions"><button class="btn" id="use-style">Get this look</button><label class="btn ghost">${icon("upload")}Use a photo<input type="file" accept="image/*" hidden id="ar-file"></label></div>`;
   controls.querySelectorAll("[data-s]").forEach((b) => b.addEventListener("click", () => { arState.style = b.dataset.s; renderControls("ar"); drawStatic(); }));
   controls.querySelectorAll("[data-c]").forEach((b) => b.addEventListener("click", () => { arState.shade = b.dataset.c; renderControls("ar"); drawStatic(); }));
   $("#use-style").addEventListener("click", () => { const id = arState.style; stopModal(); bot.act("useStyle", id); });
-  $("#ar-file").addEventListener("change", async (e) => { const f = e.target.files[0]; if (f) await usePhotoInAR(f); });
+  $("#ar-file").addEventListener("change", async (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) await usePhotoInAR(f); });
 }
 
 async function usePhotoInAR(file) {
   if (stopLive) { stopLive(); stopLive = null; }
-  const img = await loadImage(file);
+  const img = await loadImage(file).catch(() => null);
+  if (!img) { msg.textContent = "Couldn't open that file – try a JPG or PNG."; return; }
   msg.textContent = "Finding your face…";
   try {
     const v = await import("./vision.js");
     const a = await v.analyze(img);
     if (!a) { msg.textContent = "No face found – try a front-facing photo."; return; }
-    resetStrands();
     arState.photo = { img, a };
+    if (a.hairColor) { const first = !arState.natural; arState.natural = a.hairColor; if (first) renderControls("ar"); }
     msg.textContent = "";
+    stage.dataset.face = "1";
     drawStatic();
-  } catch {
+  } catch (e) {
+    console.warn("photo try-on unavailable", e);
     msg.textContent = "The try-on can't load in this view. Open aaron-rz.github.io/gillette-bot to use it.";
   }
 }
 function drawStatic() {
   if (!arState.photo || stopLive) return;
   const { img, a } = arState.photo;
-  stage.width = a.width; stage.height = a.height;
-  const ctx = stage.getContext("2d");
-  ctx.drawImage(img, 0, 0, stage.width, stage.height);
-  drawStyle(ctx, arState.style, a.landmarks, arState.shade);
+  renderPhoto(stage, img, a.landmarks, arState.style, shadeValue());
+}
+
+/** Estimate the natural hair colour from the brows on the first live frame (used for the "Natural" swatch). */
+function naturalFromFrame(lm, vid) {
+  try {
+    const c = document.createElement("canvas"); c.width = 160; c.height = Math.round((160 * vid.videoHeight) / vid.videoWidth);
+    const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(vid, 0, 0, c.width, c.height);
+    const px = [];
+    for (const i of [70, 63, 105, 66, 107, 336, 296, 334, 293, 300]) {
+      const x = Math.round(lm[i].x * c.width), y = Math.round(lm[i].y * c.height);
+      const d = g.getImageData(Math.max(0, x - 1), Math.max(0, y - 1), 3, 3).data;
+      for (let k = 0; k < d.length; k += 4) px.push([d[k], d[k + 1], d[k + 2]]);
+    }
+    px.sort((a, b) => a[0] + a[1] + a[2] - (b[0] + b[1] + b[2]));
+    const dark = px.slice(0, Math.max(1, Math.floor(px.length * 0.4)));
+    const avg = [0, 1, 2].map((ch) => Math.round((dark.reduce((s, p) => s + p[ch], 0) / dark.length) * 0.85));
+    if (Math.max(...avg) - Math.min(...avg) < 4) return; // grey/IR camera: keep the default
+    arState.natural = "#" + avg.map((v) => v.toString(16).padStart(2, "0")).join("");
+    if (arState.mode === "ar") renderControls("ar");
+  } catch { /* keep default shade */ }
 }
 
 async function openModal(mode, style) {
   modal.hidden = false;
+  arState.mode = mode;
   $("#modal-title").textContent = mode === "snap" ? "Take a selfie" : "Try beard styles";
   if (style) arState.style = STYLES.some((s) => s.id === style) ? style : "short";
   arState.photo = null;
-  resetStrands();
-  const ctx = stage.getContext("2d");
-  stage.width = 640; stage.height = 480;
-  ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 640, 480);
   renderControls(mode);
   msg.textContent = mode === "snap" ? "Starting camera…" : "Starting camera… allow access to try styles live.";
   try {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error("no camera API");
-    stopLive = await startLive(video, stage, () => (mode === "snap" ? { style: "clean" } : arState));
-    msg.textContent = mode === "snap" ? "" : "Move a little – the beard follows your face.";
-    setTimeout(() => { if (msg.textContent.startsWith("Move")) msg.textContent = ""; }, 3500);
+    stopLive = await startLive(video, stage, () => (mode === "snap" ? { style: "clean" } : { style: arState.style, shade: shadeValue() }), (lm, vid) => { if (!arState.natural) naturalFromFrame(lm, vid); });
+    msg.textContent = stage.dataset.tracking === "0" && mode !== "snap" ? "Face tracking isn't available in this browser – please try Chrome or Safari." : mode === "snap" ? "" : "Turn your head a little – the beard follows your face and the light.";
+    setTimeout(() => { if (msg.textContent.startsWith("Turn")) msg.textContent = ""; }, 4000);
   } catch (e) {
     console.warn("camera unavailable", e);
     msg.textContent = mode === "snap" ? "Camera not available – upload a photo instead." : window.claude ? "AR needs the camera, which this view blocks. Open aaron-rz.github.io/gillette-bot on your phone." : "Camera not available – use a photo to try the styles.";
@@ -173,7 +196,12 @@ $("#form").addEventListener("submit", (e) => {
   $("#options").innerHTML = "";
   bot.onText(v);
 });
-$("#basket-btn").addEventListener("click", () => bot.act("basket"));
+$("#basket-btn").addEventListener("click", () => ui.openBasket());
+$("#drawer-close").addEventListener("click", () => ui.closeBasket());
+$("#drawer-continue").addEventListener("click", () => ui.closeBasket());
+$("#drawer").addEventListener("click", (e) => { if (e.target.id === "drawer") ui.closeBasket(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#drawer").hidden) ui.closeBasket(); });
+$("#drawer-checkout").addEventListener("click", () => { ui.closeBasket(); ui.user("Checkout"); bot.act("checkout"); });
 $("#restart").addEventListener("click", restart);
 $("#crm-toggle").addEventListener("click", () => { const o = document.body.classList.toggle("crm-open"); $("#crm-toggle").setAttribute("aria-expanded", String(o)); });
 $("#crm-close").addEventListener("click", () => { document.body.classList.remove("crm-open"); $("#crm-toggle").setAttribute("aria-expanded", "false"); });

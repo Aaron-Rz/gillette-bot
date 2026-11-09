@@ -11,6 +11,7 @@ class FakeUI {
   options(o) { this.opts = o; }
   step(n) { this.stepN = n; }
   signal() {} profile() {} landing() {} personas() {} hint() {} focusInput() {} basket() {} basketCard() {}
+  welcome() { this.welcomed = true; } guide(g) { this.guided = g; } advice(a) { this.advices = [...(this.advices || []), a]; } storePicker(o) { this.picker = o; } openBasket() { this.basketOpen = true; } closeBasket() {}
   products() {} compare() {} photoPrompt() {} consultResult() {} openAR() {} orderTrack() {} restart() { this.restarted = true; }
   routine(r) { this.routines.push(r); }
   ticket(t) { this.tickets.push(t); }
@@ -105,7 +106,10 @@ test("gibberish → helpful fallback", async () => {
   const { ui, bot } = mk();
   await bot.start();
   await bot.onText("asdf qwerty");
-  assert.match(ui.last(), /didn't quite get/);
+  assert.match(ui.last(), /not sure I understood/);
+  assert.ok(ui.guided?.length >= 3, "guide menu shown");
+  await bot.onText("zzzz blorp");
+  assert.match(ui.last(), /0800 95 713/, "second miss offers a person");
 });
 test("Lucas restock → 2+2 option", async () => {
   const { ui, bot } = mk();
@@ -123,6 +127,9 @@ test("guest signup by typing name unlocks promo", async () => {
   await bot.choose(ui.opts.find((o) => /Join SuperPlus/.test(o.label)));
   await bot.onText("lea");
   assert.match(ui.all(), /Welcome to SuperPlus, Lea/);
+  await bot.onText("not an email");
+  assert.match(ui.last(), /doesn't look like an e-mail/);
+  await bot.onText("lea@example.com");
   await bot.choose(ui.opts.find((o) => /Yes, remind/.test(o.label)));
   assert.ok(ui.opts.some((o) => /2\+2/.test(o.label)), JSON.stringify(ui.opts));
 });

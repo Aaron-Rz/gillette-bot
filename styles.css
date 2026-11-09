@@ -301,3 +301,70 @@ h1, h2, h3, h4, .wordmark { font-family: var(--head); }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 .msg.user .thumb { display: block; max-width: 160px; max-height: 200px; object-fit: cover; }
 .msg.user:has(.thumb) { padding: 4px; }
+
+/* ---------- v3: icons, welcome choice, guide, advice, store picker, basket drawer ---------- */
+svg.ico { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.opt { display: inline-flex; align-items: center; gap: 6px; }
+.opt svg.ico { width: 16px; height: 16px; }
+.btn svg.ico { width: 18px; height: 18px; }
+.tile svg.ico { width: 26px; height: 26px; stroke-width: 1.4; color: var(--cyan); }
+.hero.compact { padding: 12px; }
+.welcome .choice { display: grid; gap: 8px; position: relative; }
+.choice-btn { display: grid; grid-template-columns: 30px 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; text-align: left; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.07); color: #fff; padding: 12px 14px; min-height: 64px; transition: background .2s, border-color .2s; }
+.choice-btn svg.ico { grid-row: span 2; width: 28px; height: 28px; stroke-width: 1.4; color: var(--cyan); }
+.choice-btn b { font: 700 14px/1.2 var(--head); text-transform: uppercase; letter-spacing: .06em; }
+.choice-btn span { font-size: 12px; color: #c7cff7; }
+.choice-btn.primary { background: #fff; color: var(--navy); border-color: #fff; }
+.choice-btn.primary span { color: var(--ink-2); }
+.choice-btn.primary svg.ico { color: var(--navy); }
+.choice-btn:hover { border-color: var(--cyan); }
+.welcome.done .choice-btn, .stores.done .store { opacity: .55; pointer-events: none; }
+@media (min-width: 560px) { .welcome .choice { grid-template-columns: 1fr 1fr; } }
+.guide { padding: 12px 14px; display: grid; gap: 10px; }
+.guide h6 { margin: 0 0 6px; font: 700 11px var(--head); text-transform: uppercase; letter-spacing: .12em; color: var(--ink-2); }
+.guide .g-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.advice ol { margin: 0; padding: 0 14px 4px 34px; display: grid; gap: 6px; font-size: 14px; line-height: 1.45; }
+.advice ol li::marker { font: 700 13px var(--head); color: var(--cyan); }
+.advice p { padding: 4px 14px 12px; margin: 0; }
+.advice a, .stores a { color: inherit; }
+.stores { padding: 12px 14px; }
+.store-tools { display: flex; gap: 6px; }
+.store-tools input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); padding: 8px 10px; font: inherit; min-height: 40px; }
+.btn.small { min-height: 40px; padding: 8px 10px; font-size: 11px; }
+.stores ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+.store { width: 100%; display: grid; grid-template-columns: 20px 1fr auto; gap: 8px; align-items: center; text-align: left; background: var(--surface-2); border: 1px solid transparent; color: var(--ink); padding: 8px 10px; }
+.store:hover, .store.pref { border-color: var(--btn); }
+.store svg.ico { color: var(--btn); }
+.store b { display: block; font: 600 13px var(--head); }
+.store em { font-style: normal; font: 700 10px var(--head); text-transform: uppercase; letter-spacing: .1em; color: var(--cyan); margin-left: 4px; }
+.store small { display: block; color: var(--ink-2); font-size: 12px; }
+.store i { font-style: normal; font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+.loc-msg { margin: 6px 0 0; }
+body.drawer-open { overflow: hidden; }
+.drawer { position: fixed; inset: 0; background: #0008; z-index: 60; display: flex; justify-content: flex-end; }
+.drawer-card { width: min(420px, 100%); height: 100%; background: var(--surface); color: var(--ink); display: flex; flex-direction: column; outline: none; padding-top: env(safe-area-inset-top, 0px); animation: slidein .22s ease-out; }
+@keyframes slidein { from { transform: translateX(30px); opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { .drawer-card { animation: none; } }
+.drawer-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.drawer-head h2 { margin: 0; font: 700 15px var(--head); text-transform: uppercase; letter-spacing: .1em; }
+.drawer-body { flex: 1; overflow: auto; padding: 8px 16px; }
+.drawer-body .empty { display: grid; place-items: center; gap: 8px; padding: 48px 0; color: var(--ink-2); }
+.drawer-body .empty svg.ico { width: 40px; height: 40px; stroke-width: 1.2; }
+.lines { list-style: none; margin: 0; padding: 0; }
+.lines li { display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.lines .pimg { width: 64px; height: 64px; }
+.lines .l-main { display: grid; gap: 2px; min-width: 0; }
+.lines .l-main b { font: 600 13px/1.25 var(--head); }
+.lines .promo { justify-self: start; }
+.qty { display: inline-flex; align-items: center; border: 1px solid var(--line); margin-top: 4px; justify-self: start; }
+.qty button { width: 36px; height: 34px; border: 0; background: transparent; color: var(--ink); display: grid; place-items: center; }
+.qty button:hover { background: var(--surface-2); }
+.qty span { min-width: 26px; text-align: center; font-weight: 700; }
+.drawer-foot { border-top: 1px solid var(--line); padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 8px; }
+.drawer-total { margin: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font: 600 14px var(--head); text-transform: uppercase; letter-spacing: .06em; flex-wrap: wrap; }
+.drawer-total b { font-size: 20px; }
+.drawer-total .save { flex-basis: 100%; color: var(--ok); font-size: 12px; text-transform: none; letter-spacing: 0; }
+.icon-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.drawer[hidden], [hidden] { display: none !important; }
+.flow-link { display: block; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line); color: var(--chip-ink); font: 700 12px var(--head); text-transform: uppercase; letter-spacing: .06em; text-decoration: none; }
+.flow-link:hover { border-color: var(--btn); }

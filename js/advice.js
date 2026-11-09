@@ -1,0 +1,122 @@
+// Shaving & beard advice. Short, practical, based on Gillette's own guidance (sources per topic).
+// `next` = follow-up buttons, `slots` = what the topic tells Sam about the shopper.
+
+export const ADVICE = {
+  how_to_shave: {
+    title: "A better shave in 5 steps",
+    intro: "Here's how to get a close, comfortable shave:",
+    tips: [
+      "Wash your face and soften the hair with warm water – ideally right after a shower.",
+      "Use a shave gel or foam, never shave dry.",
+      "Shave with the grain (the direction your hair grows) using light, short strokes – let the razor do the work.",
+      "Rinse the blade often so hair doesn't clog it.",
+      "Rinse with cool water, pat dry and finish with a balm or moisturiser.",
+    ],
+    sourceName: "Gillette", source: "https://gillette.com/en-us/shaving-tips/how-to-shave/how-to-shave-your-face",
+    next: [{ label: "Find my razor", act: "guest", icon: "razor" }, { label: "Check my skin with a photo", act: "photo", icon: "camera" }],
+  },
+  blade_change: {
+    title: "When to change your blade",
+    intro: "A dull blade is the main cause of tugging and irritation.",
+    tips: [
+      "Gillette recommends a new cartridge after about 20 shaves for 5-blade razors (Fusion5, ProGlide) and about 15 for 3-blade (Mach3).",
+      "No need to count: when the coloured lubrication strip has faded, it's time.",
+      "Change sooner if the blade tugs or irritates your skin.",
+      "Rinse and shake the razor dry after each shave and store it out of the shower to keep the edge longer.",
+    ],
+    sourceName: "Gillette", source: "https://www.gillette.co.uk/blog/shaving-science/how-often-should-you-change-your-razor/",
+    next: [{ label: "Show refills", act: "set", arg: { wantType: "blades", area: "face", for: "me" }, icon: "razor" }, { label: "Current deals", act: "promo", icon: "tag" }],
+  },
+  razor_burn: {
+    title: "Stop razor burn",
+    intro: "Redness and burning usually come from a dull blade, shaving dry or pressing too hard.",
+    tips: [
+      "Prep with warm water and a gel for sensitive skin.",
+      "Shave with the grain and don't go over the same spot again and again.",
+      "Use a fresh blade – and a razor made for sensitive skin, like SkinGuard.",
+      "Already irritated? Don't shave that spot until it calms down; a cool compress and a fragrance-free moisturiser help.",
+    ],
+    sourceName: "Gillette", source: "https://gillette.com/en-us/shaving-tips/how-to-shave/razor-burn",
+    slots: { skin: "sensitive" },
+    next: [{ label: "Products for sensitive skin", act: "irritation" }, { label: "Check my skin with a photo", act: "photo", icon: "camera" }],
+  },
+  ingrown: {
+    title: "Ingrown hairs & razor bumps",
+    intro: "Bumps appear when a cut hair curls back into the skin – common with curly or coarse hair.",
+    tips: [
+      "Exfoliate gently a few times a week – but not right before shaving.",
+      "Use a fresh blade and an alcohol-free gel; shave with the grain with light pressure and short strokes.",
+      "Re-lather before a second pass and avoid going against the grain on the neck.",
+      "Don't pick at bumps; a soothing balm helps them settle.",
+    ],
+    sourceName: "Gillette", source: "https://gillette.com/en-us/shaving-tips/how-to-shave/razor-bumps",
+    slots: { skin: "sensitive" },
+    next: [{ label: "Products against bumps", act: "irritation" }, { label: "Check my skin with a photo", act: "photo", icon: "camera" }],
+  },
+  beard_trim: {
+    title: "Trim & shape your beard",
+    intro: "A sharp neckline and cheek line make any beard look intentional.",
+    tips: [
+      "Trim a clean, fully dry beard and comb it out first – wet hair stretches and you cut too short.",
+      "Start with a longer guard and step down slowly; 3–5 mm suits short-to-medium beards.",
+      "Neckline: about two fingers above the Adam's apple; shave everything below.",
+      "Cheek line: keep it natural or lightly defined – don't set it too low.",
+      "Finish the edges with a precision blade for crisp lines.",
+    ],
+    sourceName: "Gillette", source: "https://gillette.com/en-us/shaving-tips/how-to-shave/how-to-trim-a-beard/",
+    slots: { area: "beard" },
+    next: [{ label: "Show trimmers", act: "set", arg: { area: "beard", wantType: "trimmer", for: "me" }, icon: "beard" }, { label: "Try beard styles", act: "ar", icon: "beard" }],
+  },
+  beard_grow: {
+    title: "Growing a beard",
+    intro: "Patience pays: the itch peaks around week 2, shape and density show after 4–6 weeks.",
+    tips: [
+      "Don't trim in the first month or two – patchiness in months 2–3 is common and usually temporary.",
+      "Speed is mostly genetics; some beards only fill in by the late twenties.",
+      "Use beard oil from the start – it softens the hair and calms the itchy early weeks.",
+      "Still patchy? Styles like stubble, a goatee or a circle beard hide gaps.",
+    ],
+    sourceName: "Gillette", source: "https://www.gillette.co.uk/blog/facial-hair-styles/beard-growth-process-stages/",
+    slots: { area: "beard" },
+    next: [{ label: "Try beard styles", act: "ar", icon: "beard" }, { label: "Beard care products", act: "set", arg: { area: "beard", style: "short", for: "me" } }],
+  },
+  beard_care: {
+    title: "Soft beard, calm skin",
+    intro: "An itchy or rough beard usually means dry skin and hair underneath.",
+    tips: [
+      "Wash with a beard-specific cleanser – a clean beard itches less.",
+      "Comb daily and trim stray hairs that poke the skin.",
+      "Moisturise after washing: oil for stubble and short beards, balm for longer beards that need hold.",
+      "Don't scratch – broken skin can get infected.",
+    ],
+    sourceName: "Gillette", source: "https://www.gillette.co.uk/blog/how-to-shave/how-to-stop-an-itchy-beard/",
+    slots: { area: "beard" },
+    next: [{ label: "Beard care products", act: "set", arg: { area: "beard", style: "short", for: "me" } }, { label: "Check my beard with a photo", act: "photo", icon: "camera" }],
+  },
+  head_shave: {
+    title: "Shaving your head",
+    intro: "A smooth head shave works like a face shave – just more surface.",
+    tips: [
+      "Trim the hair as short as possible first, then shave during or right after a warm shower.",
+      "Apply gel and shave with the grain first; go against it only on a second pass, if your skin tolerates it.",
+      "Light, smooth strokes with even pressure; re-apply gel before a second pass.",
+      "Rinse cool, pat dry, use an alcohol-free lotion – and sunscreen.",
+    ],
+    sourceName: "Gillette", source: "https://gillette.com/en-us/shaving-tips/manscaping/shaving-head",
+    slots: { area: "head" },
+    next: [{ label: "Find a razor for my head", act: "set", arg: { area: "head", for: "me" }, icon: "razor" }],
+  },
+  body_shave: {
+    title: "Legs & body",
+    intro: "Body skin is thinner – a gentle routine avoids bumps and redness.",
+    tips: [
+      "Chest/body: trim long hair to 2–6 mm first so the razor doesn't clog.",
+      "Soften in a warm shower, use a thick layer of gel and shave with the grain with light strokes.",
+      "Take extra care around knees, ankles and other curves.",
+      "Moisturise afterwards – it matters most on body skin.",
+    ],
+    sourceName: "Gillette", source: "https://gillette.com/en-us/shaving-tips/manscaping/how-to-shave-chest-hair",
+    slots: { area: "body" },
+    next: [{ label: "Body razors for men", act: "set", arg: { area: "body", gender: "m", for: "me" } }, { label: "Venus for women", act: "set", arg: { area: "body", gender: "f", for: "me" } }],
+  },
+};

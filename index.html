@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600;700;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&display=swap" rel="stylesheet">
 <link rel="preconnect" href="https://static.thcdn.com">
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="css/vision.css">
 </head>
 <body>
 <div class="concept">Student concept · EDHEC · not an official Gillette or Delhaize service · product images © P&amp;G</div>
@@ -32,7 +33,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1.5 11h-11z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
           <span id="basket-count">0</span>
         </button>
-        <button id="restart" class="icon-btn" title="Start over" aria-label="Start over">↻</button>
+        <button id="restart" class="icon-btn" title="Start over" aria-label="Start over"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
       </div>
     </header>
     <ol id="steps" class="steps" aria-label="Conversation steps"></ol>
@@ -53,9 +54,10 @@
   <aside id="crm" class="crm" aria-label="Behind the scenes">
     <div class="crm-head">
       <h2>Behind the scenes</h2>
-      <button id="crm-close" class="icon-btn dark" aria-label="Close">✕</button>
+      <button id="crm-close" class="icon-btn dark" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <p class="muted small">What Sam knows and which data drives each message. Not shown to real shoppers.</p>
+    <a class="flow-link" href="docs/flow.html" target="_blank" rel="noopener">How Sam works: decision tree, CRM &amp; systems →</a>
     <div id="ai-status" class="ai-status" hidden></div>
     <label class="entry">Entry point
       <select id="entry">
@@ -72,11 +74,26 @@
   </aside>
 </div>
 
+<div id="drawer" class="drawer" hidden>
+  <div class="drawer-card" role="dialog" aria-modal="true" aria-labelledby="drawer-title" tabindex="-1">
+    <div class="drawer-head">
+      <h2 id="drawer-title">Your basket</h2>
+      <button id="drawer-close" class="icon-btn dark" aria-label="Close basket"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div id="drawer-body" class="drawer-body"></div>
+    <div id="drawer-foot" class="drawer-foot" hidden>
+      <p id="drawer-total" class="drawer-total"></p>
+      <button id="drawer-checkout" class="btn">Checkout</button>
+      <button id="drawer-continue" class="btn ghost">Keep shopping</button>
+    </div>
+  </div>
+</div>
+
 <div id="modal" class="modal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal-head">
       <h2 id="modal-title">Try beard styles</h2>
-      <button id="modal-close" class="icon-btn dark" aria-label="Close">✕</button>
+      <button id="modal-close" class="icon-btn dark" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div class="stage">
       <video id="cam" playsinline muted></video>

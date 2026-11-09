@@ -9,6 +9,7 @@ export function normalize(text) {
     .replace(ACCENTS, "")
     .toLowerCase()
     .replace(/[’`´]/g, "'")
+    .replace(/\b(won|don|can|doesn|isn|didn|hasn|wasn|haven|aren)t\b/g, "$1't")
     .replace(/€\s*(\d+(?:[.,]\d+)?)/g, "$1 eur")
     .replace(/(\d)\s*€/g, "$1 eur")
     .replace(/(\d),(\d{1,2})\b/g, "$1.$2")
@@ -18,7 +19,7 @@ export function normalize(text) {
 }
 
 // ---------- typo tolerance ----------
-function osa(a, b, max) {
+export function osa(a, b, max) {
   // optimal string alignment distance with early exit
   if (Math.abs(a.length - b.length) > max) return max + 1;
   const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
@@ -109,10 +110,11 @@ const INTENTS = [
   // service (typed only)
   I("refund", 3, /\b(refunds?|reimburse(ment)?|money back|get my money|return(ing|ed)? (it|this|them|my|the|an?)|want to return|send (it|them) back|bring (it|them) back|exchange|replacement|rembours\w*|retour\w*|terugbetal\w*|terugsturen)\b/),
   I("refund", 2, /\breturns?\b/),
-  I("order_status", 3, /\b(where is my (order|parcel|package|delivery)|order status|track(ing)?( my)?( order| parcel)?|(hasn'?t|has not|didn'?t|did not|not|never) (arrived?|delivered|come|came)|still waiting|delivery (is )?late|late delivery|when will (it|my order|my parcel) (arrive|come)|commande|bestelling|livraison|levering)\b/),
-  I("order_status", 2.5, /\b((has|did|is) my (order|parcel|package|delivery) (arrived?|come|coming|here|shipped|ready)|my (order|parcel|package)\b)/),
+  I("order_status", 3, /\b(where is my (order|parcel|package|delivery)|order status|track(ing)?( my)?( order| parcel)?|(hasn'?t|has not|didn'?t|did not|not|never) (arrived?|delivered|come|came)|still waiting|delivery (is )?late|late delivery|when will (it|my order|my parcel) (arrive|come)|ou est ma commande|commande (n'est |est )?(pas|toujours pas) (arrivee?|livree?)|bestelling (is )?(nog )?(niet|nog niet) (aangekomen|geleverd)|waar is mijn (bestelling|pakket)|wo ist meine bestellung)\b/),
+  I("order_status", 2.5, /\b((has|did|is) my (order|parcel|package|delivery) (arrived?|come|coming|here|shipped|ready))\b/),
+  I("order_status", 1, /\bmy (order|parcel|package)\b/),
   I("defect", 3, /\b(broken|defective|damaged|faulty|(doesn'?t|does not|stopped|isn'?t|not) work(ing)?|rust(y)?|cracked|leak(ing|s)?|snapped|fell (off|apart)|won'?t (charge|turn on)|battery (is )?(dead|empty)|missing (part|blade|piece))\b/),
-  I("injury", 3, /\b(cut (myself|my)|i cut|bleed(ing)?|blood|nicked|allerg(ic|y)|(skin )?reaction|rash|swell(ing|ed|en)|bad razor burn|burns? (a lot|badly))\b/),
+  I("injury", 3, /\b(cut myself|(cut|nicked) (my|the) (face|skin|lip|chin|neck|legs?)|bleed(ing)?|blood|nicked|allerg(ic|y)|(skin )?reaction|rash|swell(ing|ed|en)|bad razor burn|burns? (a lot|badly))\b/),
   I("cancel", 3, /\b(cancel(lation)?|unsubscribe|stop (my )?(subscription|order))\b/),
   I("invoice", 2, /\b(invoice|receipt|bill|factuur|facture)\b/),
   I("privacy", 3, /\b(delete my (data|account|information)|gdpr|privacy|personal data|forget me|what (data )?(do you )?(know|have|store|keep) about me|my data)\b/),
@@ -129,7 +131,7 @@ const INTENTS = [
   I("basket", 1.5, /\b(basket|cart|my items|what did i (add|buy)|remove|checkout|check out|pay now)\b/),
   I("photo", 2, /\b(photo|picture|selfie|upload|(analy[sz]e|scan|check) my (skin|face|beard)|skin (analysis|check|type)|consult(ation)?|camera)\b/),
   I("ar", 2, /\b(try (it )?on|try beard|beard styles?|virtual(ly)?|augmented|\bar\b|how would i look|what would i look like|which (beard )?style)\b/),
-  I("login", 2, /\b(log ?in|sign ?in|my account|superplus card|my card)\b/),
+  I("login", 2, /\b(log ?in|sign ?in|my account|password|use my (superplus )?card|link my card|connect my card|i have (a|my) superplus( card)?|i'm a (superplus )?member)\b/),
   I("greeting", 0.6, /^(hi|hey|hello|hiya|yo|good (morning|evening|afternoon)|bonjour|salut|hallo|goedendag|goeiedag|dag)\b/),
   I("thanks", 0.8, /\b(thanks?|thank you|cheers|merci|dank (je|u)|bedankt)\b/),
   I("bye", 0.8, /\b(bye|goodbye|that'?s all|see you|ciao)\b/),
