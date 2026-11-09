@@ -67,7 +67,7 @@ export function stylePolygons(id, lm, W, H) {
 // ---------- hair rendering ----------
 export const SHADES = { black: "#1b1410", brown: "#4a3020", blond: "#9a7a4e", grey: "#8a8580" };
 // [strands per face-width², strand length (face-width/1000), base alpha, base blur]
-const CFG = { stubble: [4200, 8, 0.16, 3], short: [11000, 18, 0.42, 4], full: [14000, 30, 0.42, 7], circle: [9000, 20, 0.55, 4], moustache: [9000, 22, 0.55, 3] };
+const CFG = { stubble: [4200, 8, 0.16, 3], short: [11000, 18, 0.42, 4], full: [14000, 30, 0.42, 7], circle: [12000, 18, 0.4, 4], moustache: [12000, 18, 0.42, 3] };
 const strandCache = new Map();
 
 function frameOf(lm, W, H) {
@@ -99,6 +99,8 @@ function strandsFor(id, ctx, path, polys, F) {
   const n = Math.min(6000, Math.round(CFG[id][0] * area));
   const out = [];
   let tries = 0;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); // hit-test in landmark pixel space, not in the mirrored selfie space
   while (out.length < n && tries < n * 6) {
     tries++;
     const x = x0 + Math.random() * (x1 - x0), y = y0 + Math.random() * (y1 - y0);
@@ -108,6 +110,7 @@ function strandsFor(id, ctx, path, polys, F) {
     const dir = Math.atan2(1, u * (id === "moustache" ? 2.2 : 0.9)) + (Math.random() - 0.5) * 0.7; // down and outward
     out.push({ u, v, dir, len: 0.5 + Math.random(), tone: 0.75 + Math.random() * 0.6, bucket: Math.floor(Math.random() * 3) });
   }
+  ctx.restore();
   strandCache.set(id, out);
   return out;
 }
