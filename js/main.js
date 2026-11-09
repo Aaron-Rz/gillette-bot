@@ -128,7 +128,7 @@ async function usePhotoInAR(file) {
     msg.textContent = "";
     drawStatic();
   } catch {
-    msg.textContent = "The try-on can't load here. Open the public link to use it.";
+    msg.textContent = "The try-on can't load in this view. Open aaron-rz.github.io/gillette-bot to use it.";
   }
 }
 function drawStatic() {
@@ -158,7 +158,7 @@ async function openModal(mode, style) {
     setTimeout(() => { if (msg.textContent.startsWith("Move")) msg.textContent = ""; }, 3500);
   } catch (e) {
     console.warn("camera unavailable", e);
-    msg.textContent = mode === "snap" ? "Camera not available – upload a photo instead." : "Camera not available – use a photo to try the styles.";
+    msg.textContent = mode === "snap" ? "Camera not available – upload a photo instead." : window.claude ? "AR needs the camera, which this view blocks. Open aaron-rz.github.io/gillette-bot on your phone." : "Camera not available – use a photo to try the styles.";
   }
 }
 
