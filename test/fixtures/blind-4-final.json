@@ -1,0 +1,851 @@
+[
+ {
+  "text": "my face is a mess after every shave, what should I even buy",
+  "cat": "find_product",
+  "alt": [
+   "razor_burn"
+  ]
+ },
+ {
+  "text": "je cherche un rasoir pas trop cher mais qui rase bien, j'ai la peau fragile",
+  "cat": "find_product"
+ },
+ {
+  "text": "hi! need something for a first razor, never shaved properly before",
+  "cat": "find_product"
+ },
+ {
+  "text": "welk scheermes is goed voor een dikke baard die snel terugkomt?",
+  "cat": "find_product"
+ },
+ {
+  "text": "wat soll ich nehmen, hab empfindliche haut und wenig zeit morgens",
+  "cat": "find_product"
+ },
+ {
+  "text": "hi, its my brothers bday on sat and he's impossible to shop for, he shaves tho",
+  "cat": "gift"
+ },
+ {
+  "text": "un cadeau pour mon mari, il aime le beau matériel, budget 50 max",
+  "cat": "gift"
+ },
+ {
+  "text": "cadeautje voor mijn vader, hij is 70 en gebruikt nog een oud scheermes",
+  "cat": "gift"
+ },
+ {
+  "text": "what can i get my boyfriend for christmas from you guys, razor stuff?",
+  "cat": "gift"
+ },
+ {
+  "text": "Hallo, ich such ein Geschenk für meinen Opa, nix kompliziertes",
+  "cat": "gift"
+ },
+ {
+  "text": "mach3 or fusion5, is it really worth paying more",
+  "cat": "compare"
+ },
+ {
+  "text": "whats the actual diffrence between proglide and fusion",
+  "cat": "compare"
+ },
+ {
+  "text": "c'est quoi la différence entre le SkinGuard et le Mach3 ?",
+  "cat": "compare"
+ },
+ {
+  "text": "Venus vs Venus Swirl, which one glides better, I keep going back and forth",
+  "cat": "compare"
+ },
+ {
+  "text": "is the King C. Gillette better than just a normal razor or is it hype",
+  "cat": "compare",
+  "alt": [
+   "find_product"
+  ]
+ },
+ {
+  "text": "hello! i dont wanna spend more than 10 euro, what can i get",
+  "cat": "budget"
+ },
+ {
+  "text": "je veux juste le moins cher possible pour me raser",
+  "cat": "budget"
+ },
+ {
+  "text": "hello! wat is het goedkoopste dat nog fatsoenlijk scheert",
+  "cat": "budget"
+ },
+ {
+  "text": "student here, broke till the end of the month, cheap shave options?",
+  "cat": "budget"
+ },
+ {
+  "text": "something decent under 15 eur please",
+  "cat": "budget"
+ },
+ {
+  "text": "how much is a mach3 handle",
+  "cat": "price"
+ },
+ {
+  "text": "combien coûte le ProGlide avec 4 lames ?",
+  "cat": "price"
+ },
+ {
+  "text": "what do the fusion5 refills cost",
+  "cat": "price"
+ },
+ {
+  "text": "bonjour, wat kost de SkinGuard",
+  "cat": "price"
+ },
+ {
+  "text": "wieviel kostet das GilletteLabs ungefähr",
+  "cat": "price"
+ },
+ {
+  "text": "any deals on right now?",
+  "cat": "promo"
+ },
+ {
+  "text": "goeiemorgen, y a des promos sur les lames cette semaine ?",
+  "cat": "promo"
+ },
+ {
+  "text": "is there a discount code i can use, someone said theres one",
+  "cat": "promo"
+ },
+ {
+  "text": "zijn er acties op scheermesjes deze maand",
+  "cat": "promo"
+ },
+ {
+  "text": "got any 2+1 offers on razors",
+  "cat": "promo"
+ },
+ {
+  "text": "how do i get points on my superplus card when buying razors",
+  "cat": "superplus_info"
+ },
+ {
+  "text": "je dois scanner ma carte Delhaize à quel moment pour avoir les points ?",
+  "cat": "superplus_info"
+ },
+ {
+  "text": "do I need the Delhaize card to get the promo prices",
+  "cat": "superplus_info"
+ },
+ {
+  "text": "wat zijn die superplus punten eigenlijk waard",
+  "cat": "superplus_info"
+ },
+ {
+  "text": "kann ich meine superplus karte online verknüpfen, ich hab die immer im auto vergessen",
+  "cat": "superplus_info"
+ },
+ {
+  "text": "will fusion5 blades fit my old fusion handle",
+  "cat": "compat"
+ },
+ {
+  "text": "ik heb een mach3 steel, passen daar nieuwe mesjes op?",
+  "cat": "compat"
+ },
+ {
+  "text": "do ProGlide cartridges work on a Fusion5 handle",
+  "cat": "compat"
+ },
+ {
+  "text": "mes lames Mach3 vont sur le manche ProShield ?",
+  "cat": "compat"
+ },
+ {
+  "text": "hi, passen venus klingen auch auf den swirl griff",
+  "cat": "compat"
+ },
+ {
+  "text": "do you guys sell safety razors at all",
+  "cat": "availability"
+ },
+ {
+  "text": "vous vendez des rasoirs électriques ?",
+  "cat": "availability"
+ },
+ {
+  "text": "do you even carry Venus or only the men stuff",
+  "cat": "availability"
+ },
+ {
+  "text": "verkopen jullie ook losse scheermesjes voor een oud model",
+  "cat": "availability"
+ },
+ {
+  "text": "gibt es bei euch auch rasierpinsel und seife, oder nur gillette",
+  "cat": "availability"
+ },
+ {
+  "text": "is the proglide in stock at my delhaize in Ixelles",
+  "cat": "store_stock"
+ },
+ {
+  "text": "where in the shop do I find the razor blades, aisle?",
+  "cat": "store_stock"
+ },
+ {
+  "text": "hoe laat gaat de Delhaize in Gent open op zondag",
+  "cat": "store_stock"
+ },
+ {
+  "text": "what time does the store close tonight, i wanna swing by after work",
+  "cat": "store_stock"
+ },
+ {
+  "text": "est-ce que le Delhaize de Namur a encore du Fusion5 en rayon",
+  "cat": "store_stock"
+ },
+ {
+  "text": "add the fusion5 to my cart please",
+  "cat": "basket"
+ },
+ {
+  "text": "what's in my basket right now",
+  "cat": "basket"
+ },
+ {
+  "text": "mets deux paquets de lames dans mon panier",
+  "cat": "basket"
+ },
+ {
+  "text": "haal de mach3 uit mijn winkelmand",
+  "cat": "basket"
+ },
+ {
+  "text": "can i change the amount in my cart, i put 3 but want 2",
+  "cat": "basket"
+ },
+ {
+  "text": "ok i want to pay now",
+  "cat": "checkout"
+ },
+ {
+  "text": "how do I finish my order, i can't find the button",
+  "cat": "checkout"
+ },
+ {
+  "text": "ik wil afrekenen maar het lukt niet met bancontact",
+  "cat": "checkout"
+ },
+ {
+  "text": "payment page keeps freezing when I click pay, help",
+  "cat": "checkout"
+ },
+ {
+  "text": "je veux payer avec paypal c'est possible ?",
+  "cat": "checkout"
+ },
+ {
+  "text": "hello! how do i get a really close shave without ripping my skin up",
+  "cat": "how_to_shave"
+ },
+ {
+  "text": "never learned this, my dad left early lol. how do you shave properly",
+  "cat": "how_to_shave"
+ },
+ {
+  "text": "comment bien se raser sans irritation",
+  "cat": "how_to_shave"
+ },
+ {
+  "text": "hoe scheer ik het best mijn gezicht, tips?",
+  "cat": "how_to_shave"
+ },
+ {
+  "text": "what direction should i shave in, with or against the grain",
+  "cat": "how_to_shave"
+ },
+ {
+  "text": "how often should I swap the blade",
+  "cat": "blade_change"
+ },
+ {
+  "text": "mon rasoir tire un peu, il faut changer la lame quand ?",
+  "cat": "blade_change"
+ },
+ {
+  "text": "how do i pop the old cartridge off the handle",
+  "cat": "blade_change"
+ },
+ {
+  "text": "wanneer moet ik een nieuw mesje nemen, na hoeveel keer?",
+  "cat": "blade_change"
+ },
+ {
+  "text": "blade feels dull after like 3 shaves, normal?",
+  "cat": "blade_change"
+ },
+ {
+  "text": "my neck is red and stings after shaving, every single time",
+  "cat": "razor_burn"
+ },
+ {
+  "text": "j'ai des rougeurs et ça brûle après le rasage",
+  "cat": "razor_burn"
+ },
+ {
+  "text": "help my face is on fire after shaving this morning",
+  "cat": "razor_burn"
+ },
+ {
+  "text": "scheerbrand op mn nek, wat helpt?",
+  "cat": "razor_burn"
+ },
+ {
+  "text": "bonjour, rasurbrand am hals, was kann ich tun",
+  "cat": "razor_burn"
+ },
+ {
+  "text": "got these annoying bumps with hairs stuck under skin on my jawline",
+  "cat": "ingrown"
+ },
+ {
+  "text": "poils incarnés sur le cou, comment les éviter",
+  "cat": "ingrown"
+ },
+ {
+  "text": "goeiemorgen, ingroeiende haartjes, wat kan ik doen",
+  "cat": "ingrown"
+ },
+ {
+  "text": "how do i stop ingrown hairs coming back, tried everything",
+  "cat": "ingrown"
+ },
+ {
+  "text": "ingrown hairs hurt, should i pop them or not",
+  "cat": "ingrown"
+ },
+ {
+  "text": "how do I trim my beard so it looks neat but not shaped",
+  "cat": "beard_trim"
+ },
+ {
+  "text": "comment tailler sa barbe de 3 jours proprement",
+  "cat": "beard_trim"
+ },
+ {
+  "text": "baard bijknippen, welke lengte standaard?",
+  "cat": "beard_trim"
+ },
+ {
+  "text": "how do i tidy up my neckline",
+  "cat": "beard_trim"
+ },
+ {
+  "text": "how short should I trim the cheeks, don't wanna look weird",
+  "cat": "beard_trim"
+ },
+ {
+  "text": "been trying to grow a beard for a month and its patchy as hell",
+  "cat": "beard_grow"
+ },
+ {
+  "text": "how long until my beard looks full",
+  "cat": "beard_grow"
+ },
+ {
+  "text": "ma barbe pousse pas pareil partout, normal ?",
+  "cat": "beard_grow"
+ },
+ {
+  "text": "baard laten groeien, wat moet ik doen tijdens de jeukfase",
+  "cat": "beard_grow"
+ },
+ {
+  "text": "tips for growing a beard faster?",
+  "cat": "beard_grow"
+ },
+ {
+  "text": "my beard itches like crazy",
+  "cat": "beard_care"
+ },
+ {
+  "text": "ma barbe est super sèche, quoi mettre dessus",
+  "cat": "beard_care"
+ },
+ {
+  "text": "do i really need beard oil or is that a scam",
+  "cat": "beard_care"
+ },
+ {
+  "text": "baardolie of balsem, wat is beter voor droge baard?",
+  "cat": "beard_care"
+ },
+ {
+  "text": "how often should i wash my beard, shampoo okay?",
+  "cat": "beard_care"
+ },
+ {
+  "text": "want to shave my head bald, where do I start",
+  "cat": "head_shave"
+ },
+ {
+  "text": "je veux me raser le crâne, quel rasoir ?",
+  "cat": "head_shave"
+ },
+ {
+  "text": "kaal scheren van mn hoofd, hoe doe ik dat zonder sneetjes",
+  "cat": "head_shave"
+ },
+ {
+  "text": "shaving my scalp leaves it flaky and red, what am I doing wrong",
+  "cat": "head_shave"
+ },
+ {
+  "text": "going bald anyway so just gonna shave it all off, tips?",
+  "cat": "head_shave"
+ },
+ {
+  "text": "can I use the same razor on my legs",
+  "cat": "body_shave"
+ },
+ {
+  "text": "bonjour, je voudrais raser mes jambes sans me couper",
+  "cat": "body_shave"
+ },
+ {
+  "text": "hallo, best razor for the bikini line, sensitive",
+  "cat": "body_shave"
+ },
+ {
+  "text": "oksels scheren, welk scheermes?",
+  "cat": "body_shave"
+ },
+ {
+  "text": "can men shave chest hair with a normal razor",
+  "cat": "body_shave"
+ },
+ {
+  "text": "can you look at my face and tell me what skin type i have",
+  "cat": "photo"
+ },
+ {
+  "text": "I'll send a selfie, can you check my beard",
+  "cat": "photo"
+ },
+ {
+  "text": "kan je mijn huid analyseren met een foto?",
+  "cat": "photo"
+ },
+ {
+  "text": "puis-je t'envoyer une photo pour que tu analyses ma peau",
+  "cat": "photo"
+ },
+ {
+  "text": "uploaded a pic, what do you think of my stubble",
+  "cat": "photo"
+ },
+ {
+  "text": "can i try out different beard styles on my face with the camera",
+  "cat": "ar"
+ },
+ {
+  "text": "je peux essayer virtuellement une barbe ?",
+  "cat": "ar"
+ },
+ {
+  "text": "is there a way to see how a goatee would look on me",
+  "cat": "ar"
+ },
+ {
+  "text": "kan ik een baardstijl proberen via mijn camera",
+  "cat": "ar"
+ },
+ {
+  "text": "want to see myself with a full beard before i commit",
+  "cat": "ar"
+ },
+ {
+  "text": "i want my money back for the razor i returned",
+  "cat": "refund"
+ },
+ {
+  "text": "how do i return something I bought, it doesnt work for me",
+  "cat": "refund"
+ },
+ {
+  "text": "je veux être remboursé, le produit ne me convient pas",
+  "cat": "refund"
+ },
+ {
+  "text": "ik wil mijn geld terug, wanneer krijg ik terugbetaling?",
+  "cat": "refund"
+ },
+ {
+  "text": "returned my order 2 weeks ago, still no refund",
+  "cat": "refund"
+ },
+ {
+  "text": "where is my order 48213",
+  "cat": "order_status"
+ },
+ {
+  "text": "je n'ai toujours pas reçu ma commande, le numéro c'est 77120",
+  "cat": "order_status"
+ },
+ {
+  "text": "hello! hi, can you check my order from last tuesday?",
+  "cat": "order_status"
+ },
+ {
+  "text": "waar blijft mijn bestelling nummer 55931",
+  "cat": "order_status"
+ },
+ {
+  "text": "my parcel says delivered but nothing's here",
+  "cat": "order_status"
+ },
+ {
+  "text": "how much is shipping and how long does it take",
+  "cat": "delivery_info"
+ },
+ {
+  "text": "can i pick up in store instead of delivery",
+  "cat": "delivery_info"
+ },
+ {
+  "text": "livraison gratuite à partir de combien ?",
+  "cat": "delivery_info"
+ },
+ {
+  "text": "wat zijn de bezorgtijden, kan ik een tijdslot kiezen",
+  "cat": "delivery_info"
+ },
+ {
+  "text": "do you deliver on weekends",
+  "cat": "delivery_info"
+ },
+ {
+  "text": "i ordered mach3 and got fusion5, what",
+  "cat": "wrong_item"
+ },
+ {
+  "text": "on m'a envoyé le mauvais produit",
+  "cat": "wrong_item"
+ },
+ {
+  "text": "verkeerde mesjes ontvangen, ik bestelde proglide",
+  "cat": "wrong_item"
+ },
+ {
+  "text": "the box has venus in it but I never ordered that",
+  "cat": "wrong_item"
+ },
+ {
+  "text": "received a blade pack for the wrong handle, wasn't what i picked",
+  "cat": "wrong_item"
+ },
+ {
+  "text": "i was charged twice for the same order",
+  "cat": "billing"
+ },
+ {
+  "text": "il y a un prélèvement bizarre sur mon compte de chez vous",
+  "cat": "billing"
+ },
+ {
+  "text": "ik zie een te hoog bedrag afgeschreven",
+  "cat": "billing"
+ },
+ {
+  "text": "the amount on my card doesn't match what the site said",
+  "cat": "billing"
+ },
+ {
+  "text": "why did you bill me 3 euros extra",
+  "cat": "billing"
+ },
+ {
+  "text": "bonjour, the razor handle snapped in half after one week",
+  "cat": "defect"
+ },
+ {
+  "text": "ma lame est déjà rouillée à l'ouverture",
+  "cat": "defect"
+ },
+ {
+  "text": "mesje zat los in de verpakking, defect",
+  "cat": "defect"
+ },
+ {
+  "text": "the cartridge is bent out of the box, can't use it",
+  "cat": "defect"
+ },
+ {
+  "text": "my new razor vibrates weirdly and the head wobbles",
+  "cat": "defect"
+ },
+ {
+  "text": "cut myself pretty bad with your razor, its bleeding still",
+  "cat": "injury"
+ },
+ {
+  "text": "ik heb een flinke snee, wat moet ik doen",
+  "cat": "injury"
+ },
+ {
+  "text": "je me suis coupé profondément, ça saigne encore",
+  "cat": "injury"
+ },
+ {
+  "text": "ouch sliced my chin, how to stop the bleeding",
+  "cat": "injury"
+ },
+ {
+  "text": "hab mich böse geschnitten, hört nicht auf zu bluten",
+  "cat": "injury"
+ },
+ {
+  "text": "cancel my order please, I ordered by mistake",
+  "cat": "cancel"
+ },
+ {
+  "text": "je veux annuler ma commande avant l'envoi",
+  "cat": "cancel"
+ },
+ {
+  "text": "bestelling annuleren kan dat nog?",
+  "cat": "cancel"
+ },
+ {
+  "text": "changed my mind about the thing i ordered an hour ago",
+  "cat": "cancel"
+ },
+ {
+  "text": "can I stop the order from going out, it's not shipped yet right?",
+  "cat": "cancel"
+ },
+ {
+  "text": "i need an invoice for my company",
+  "cat": "invoice"
+ },
+ {
+  "text": "where can I download the receipt of my purchase",
+  "cat": "invoice"
+ },
+ {
+  "text": "j'ai besoin d'une facture avec numéro de TVA",
+  "cat": "invoice"
+ },
+ {
+  "text": "kan ik een factuur krijgen op bedrijfsnaam",
+  "cat": "invoice"
+ },
+ {
+  "text": "could you send me the invoice again, lost the mail",
+  "cat": "invoice"
+ },
+ {
+  "text": "what do you do with my data",
+  "cat": "privacy"
+ },
+ {
+  "text": "is my selfie stored somewhere?",
+  "cat": "privacy"
+ },
+ {
+  "text": "je veux supprimer toutes mes données",
+  "cat": "privacy"
+ },
+ {
+  "text": "wat doen jullie met mijn persoonsgegevens, gdpr",
+  "cat": "privacy"
+ },
+ {
+  "text": "do you share my info with third parties, honestly",
+  "cat": "privacy"
+ },
+ {
+  "text": "can I talk to a real person",
+  "cat": "human"
+ },
+ {
+  "text": "je préfère parler à un humain",
+  "cat": "human"
+ },
+ {
+  "text": "ik wil iemand van de klantenservice spreken",
+  "cat": "human"
+ },
+ {
+  "text": "bot is not helping, get me an actual agent",
+  "cat": "human",
+  "alt": [
+   "complaint"
+  ]
+ },
+ {
+  "text": "is there a phone number i can call",
+  "cat": "human"
+ },
+ {
+  "text": "honestly this is the worst service ive had",
+  "cat": "complaint"
+ },
+ {
+  "text": "je suis très déçu de mon expérience chez vous",
+  "cat": "complaint"
+ },
+ {
+  "text": "jullie service is echt slecht, drie keer gebeld en niks",
+  "cat": "complaint"
+ },
+ {
+  "text": "i've waited ages and nobody answers, unacceptable",
+  "cat": "complaint"
+ },
+ {
+  "text": "want to file a formal complaint about the delivery",
+  "cat": "complaint"
+ },
+ {
+  "text": "what can you actually do",
+  "cat": "capabilities"
+ },
+ {
+  "text": "tu sais faire quoi exactement ?",
+  "cat": "capabilities"
+ },
+ {
+  "text": "waarmee kan jij mij helpen?",
+  "cat": "capabilities"
+ },
+ {
+  "text": "are you able to look up my order or only recommend razors",
+  "cat": "capabilities"
+ },
+ {
+  "text": "what can I ask you",
+  "cat": "capabilities"
+ },
+ {
+  "text": "hello",
+  "cat": "greeting"
+ },
+ {
+  "text": "hey there",
+  "cat": "greeting"
+ },
+ {
+  "text": "bonjour !",
+  "cat": "greeting"
+ },
+ {
+  "text": "hallo, goeiedag",
+  "cat": "greeting"
+ },
+ {
+  "text": "yo whats up",
+  "cat": "greeting"
+ },
+ {
+  "text": "thanks a lot, that helped",
+  "cat": "thanks"
+ },
+ {
+  "text": "merci beaucoup !",
+  "cat": "thanks"
+ },
+ {
+  "text": "bedankt, top",
+  "cat": "thanks"
+ },
+ {
+  "text": "cheers mate, appreciate it",
+  "cat": "thanks"
+ },
+ {
+  "text": "danke dir",
+  "cat": "thanks"
+ },
+ {
+  "text": "ok bye",
+  "cat": "bye"
+ },
+ {
+  "text": "à plus tard, merci",
+  "cat": "bye"
+ },
+ {
+  "text": "tot ziens",
+  "cat": "bye"
+ },
+ {
+  "text": "that's all for now, have a good one",
+  "cat": "bye"
+ },
+ {
+  "text": "ciao",
+  "cat": "bye"
+ },
+ {
+  "text": "lets start over",
+  "cat": "restart"
+ },
+ {
+  "text": "on recommence depuis le début ?",
+  "cat": "restart"
+ },
+ {
+  "text": "laten we opnieuw beginnen",
+  "cat": "restart"
+ },
+ {
+  "text": "forget everything I said, new question",
+  "cat": "restart"
+ },
+ {
+  "text": "reset",
+  "cat": "restart"
+ },
+ {
+  "text": "how do I log in",
+  "cat": "login"
+ },
+ {
+  "text": "je n'arrive pas à me connecter à mon compte",
+  "cat": "login"
+ },
+ {
+  "text": "ik ben mijn wachtwoord vergeten",
+  "cat": "login"
+ },
+ {
+  "text": "it says my password is wrong but i'm sure it's right",
+  "cat": "login"
+ },
+ {
+  "text": "bonjour, wie kann ich mich anmelden",
+  "cat": "login"
+ },
+ {
+  "text": "what's the weather in Brussels tomorrow",
+  "cat": "out_of_scope"
+ },
+ {
+  "text": "can you help me with my math homework",
+  "cat": "out_of_scope"
+ },
+ {
+  "text": "qui a gagné le match hier soir ?",
+  "cat": "out_of_scope"
+ },
+ {
+  "text": "wat is de hoofdstad van Australië",
+  "cat": "out_of_scope"
+ },
+ {
+  "text": "write me a poem about cats",
+  "cat": "out_of_scope"
+ }
+]

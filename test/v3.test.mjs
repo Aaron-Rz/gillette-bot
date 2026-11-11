@@ -51,7 +51,13 @@ test("classifier: blind set 2 (168 messages)", () => {
 test("classifier: final blind set 3 (210 messages, never used for tuning)", () => {
   // Honest reference number, measured once (9 Nov 2026): top-1 72.9 %, top-3 89.5 %, 59 of 63 direct actions right.
   const s = score("blind-3-final.json");
-  assert.ok(s.top1 >= 0.7 && s.top3 >= 0.88 && s.wrongActRate <= 0.08, JSON.stringify(s));
+  assert.ok(s.top1 >= 0.82 && s.top3 >= 0.95 && s.wrongActRate <= 0.06, JSON.stringify(s));
+});
+
+test("classifier: blind set 4 (210 messages, measured once after the v4 work)", () => {
+  // 11 Nov 2026: before v4 68.6 % / 84.3 %, after v4 81.4 % top-1 / 94.8 % top-3.
+  const s = score("blind-4-final.json");
+  assert.ok(s.top1 >= 0.78 && s.top3 >= 0.93 && s.wrongActRate <= 0.08, JSON.stringify(s));
 });
 
 // ---------- start ----------
@@ -197,4 +203,56 @@ test("store search and nearest", () => {
   assert.ok(searchStores("1050").length >= 2);
   assert.equal(nearestStores({ lat: 50.6253, lng: 5.5729 })[0].id, "fragnee");
   assert.equal(STORES.length, 25);
+});
+
+// ---------- v4: conversation context ----------
+test("context: named product, follow-up product, ordinal price", async () => {
+  const { ui, bot } = mk();
+  await bot.start();
+  await bot.onText("show me the Mach3");
+  assert.deepEqual(ui.shown, ["mach3Razor"]);
+  await bot.onText("and the Fusion5?");
+  assert.deepEqual(ui.shown, ["fusion5Razor"]);
+  await bot.onText("compare mach3 and fusion5");
+  await bot.onText("which is cheaper");
+  assert.match(ui.last(), /cheaper one/);
+  await bot.onText("ok I'll take the cheaper one");
+  assert.equal(bot.s.basket.length, 1);
+});
+test("context: blades that fit the recommended razor", async () => {
+  const { ui, bot } = mk();
+  await bot.start();
+  await bot.onText("I need a razor for sensitive skin, I have no razor yet");
+  assert.ok(ui.routines.length, ui.all());
+  await bot.onText("and what blades fit it?");
+  assert.match(ui.last(), /refills/);
+});
+test("context: 'nah none at home' answers the handle question; ignored question gets a default", async () => {
+  const { ui, bot } = mk();
+  await bot.start();
+  await bot.onText("hi, need a razor");
+  await bot.onText("kinda sensitive tbh");
+  assert.equal(bot.s.slots.skin, "sensitive");
+  await bot.onText("nah none at home");
+  assert.equal(bot.s.slots.handle, "no");
+  assert.ok(ui.routines.length, ui.all());
+});
+test("context: cancelling asks for confirmation and 'keep it' keeps the order", async () => {
+  const { ui, bot } = mk();
+  await bot.start();
+  await bot.onText("how do I cancel my order");
+  await bot.onText("12345");
+  assert.match(ui.last(), /Cancel order 12345\?/);
+  await bot.onText("never mind, keep it");
+  assert.match(ui.last(), /stays as it is/);
+});
+test("context: topic follow-up and order number attached to a payment case", async () => {
+  const { ui, bot } = mk();
+  await bot.start();
+  await bot.onText("I want to grow a beard");
+  await bot.onText("it itches so bad");
+  assert.equal(ui.advices.at(-1).title, "Soft beard, calm skin");
+  await bot.onText("I got charged twice");
+  await bot.onText("yes order 48213, 2x 14.99");
+  assert.match(ui.last(), /added order 48213/);
 });

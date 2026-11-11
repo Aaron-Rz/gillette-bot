@@ -108,11 +108,40 @@ export function rendererFor(canvas) {
   return r;
 }
 
-/** Render a still photo with a style. Output size follows the photo (max 1280 px on the long side). */
-export function renderPhoto(canvas, img, landmarks, style, shade) {
-  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
-  const s = Math.min(1, 1280 / Math.max(w, h));
-  rendererFor(canvas).render(img, landmarks, { style, shade, width: Math.round(w * s), height: Math.round(h * s) });
+/**
+ * Crop (in normalised photo coordinates) around the face with room for a full beard below the chin,
+ * matching the stage's aspect ratio (width / height).
+ */
+export function faceCrop(landmarks, imgW, imgH, aspect = 3 / 4) {
+  const xs = landmarks.map((p) => p.x * imgW), ys = landmarks.map((p) => p.y * imgH);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const fw = x1 - x0, fh = y1 - y0;
+  const top = y0 - fh * 0.38, bottom = y1 + fh * 0.62;
+  // stage-shaped box that holds the face plus room for a full beard; if the photo is too small in one direction,
+  // keep the whole beard area (the stage then shows thin bars) instead of cutting the chin off
+  let h = bottom - top, w = Math.max(fw * 1.9, h * aspect);
+  h = Math.max(h, w / aspect);
+  w = Math.min(imgW, w); h = Math.min(imgH, h);
+  const cx = (x0 + x1) / 2, cy = (top + bottom) / 2 + (h - (bottom - top)) * 0.1;
+  const x = Math.max(0, Math.min(imgW - w, cx - w / 2)), y = Math.max(0, Math.min(imgH - h, cy - h / 2));
+  return { x, y, w, h };
+}
+
+/**
+ * Render a still photo with a style, framed around the face (so the face is large even on a phone).
+ * aspect: stage width/height; defaults to the canvas container's shape.
+ */
+export function renderPhoto(canvas, img, landmarks, style, shade, aspect) {
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const box = canvas.parentElement?.getBoundingClientRect?.();
+  const ar = aspect || (box && box.width && box.height ? box.width / box.height : 3 / 4);
+  const c = landmarks ? faceCrop(landmarks, iw, ih, ar) : { x: 0, y: 0, w: iw, h: ih };
+  const s = Math.min(1, 1280 / Math.max(c.w, c.h));
+  const W = Math.round(c.w * s), H = Math.round(c.h * s);
+  const crop = document.createElement("canvas"); crop.width = W; crop.height = H;
+  crop.getContext("2d").drawImage(img, c.x, c.y, c.w, c.h, 0, 0, W, H);
+  const lm = landmarks && landmarks.map((p) => ({ x: (p.x * iw - c.x) / c.w, y: (p.y * ih - c.y) / c.h, z: (p.z * iw) / c.w }));
+  rendererFor(canvas).render(crop, lm, { style, shade, width: W, height: H });
 }
 
 // ---------- live camera ----------
@@ -130,6 +159,7 @@ export async function startLive(video, canvas, getState, onFace) {
   try { lm = await getLandmarker("VIDEO"); } catch (e) { console.warn("face tracking unavailable", e); }
   canvas.dataset.tracking = lm ? "1" : "0";
   const filter = new OneEuro();
+  const fullQuality = typeof location !== "undefined" && new URLSearchParams(location.search).has("arfull"); // testing: no adaptive shell count
   let running = true, last = -1, frames = 0, t0 = performance.now(), seen = false, lostFor = 0;
   function frame() {
     if (!running) return;
@@ -157,7 +187,8 @@ export async function startLive(video, canvas, getState, onFace) {
         } else if (++lostFor > 5) filter.reset();
       }
       const st = getState();
-      renderer.render(video, face, { style: st.style, shade: st.shade, mirror: true });
+      renderer.render(video, face, { style: st.style, shade: st.shade, mirror: true, live: !fullQuality });
+      if (renderer.shells !== undefined) canvas.dataset.shells = String(renderer.shells);
       canvas.dataset.face = face ? "1" : "0";
       frames++;
       if (now - t0 > 1000) { canvas.dataset.fps = String(Math.round((frames * 1000) / (now - t0))); frames = 0; t0 = now; }

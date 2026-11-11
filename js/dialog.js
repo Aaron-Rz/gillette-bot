@@ -1,10 +1,11 @@
 // Dialog manager: frame-based. Every message fills what it can, then the bot asks only what is still missing
 // or jumps to the answer. Service requests (refunds, orders, complaints …) are recognised from typed text.
 import { parse, normalize, SERVICE_INTENTS } from "./nlu.js";
-import { classify, decide, tokens } from "./classify.js";
+import { classify, decide, tokens, knownShare } from "./classify.js";
 import { BY_CAT, GROUPS, GUIDE } from "./intents.js";
 import { ADVICE } from "./advice.js";
-import { STORES, storeById, storeByName } from "./stores.js";
+import { STORES, storeById, storeByName, searchStores } from "./stores.js";
+import { SYSTEMS, systemOf, productsIn, ordinalIn, mentionsCheaper, mentionsAdd, asksPrice, refersToIt, wantsBlades } from "./context.js";
 const DELIVERY = { slotNote: "Delivery is possible from the next day, Mon–Sat, 7:00–14:00 or 14:00–21:00; the fee is shown before you confirm." };
 import { recommend, cheapest, compatibility, summary, styleName } from "./recommend.js";
 import { BY_ID, CATALOG } from "./catalog.js";
@@ -36,6 +37,14 @@ export class Bot {
     this.crm = crm;
     this.opts = opts;
     this.reset();
+    // remember what was shown last, so "the second one", "the cheaper one" or "blades for it" can be resolved
+    const wrap = (name, ids) => { const f = ui[name]?.bind(ui); if (f) ui[name] = (arg, ...rest) => { this.s.lastShown = ids(arg); return f(arg, ...rest); }; };
+    if (!ui.__ctxWrapped) {
+      wrap("products", (ids) => ids.filter((id) => BY_ID[id]));
+      wrap("compare", (ids) => ids.filter((id) => BY_ID[id]));
+      wrap("routine", (r) => r.steps.map((x) => x.item.id));
+      ui.__ctxWrapped = true;
+    }
   }
   reset() {
     this.s = { mode: null, profile: null, slots: {}, rec: null, basket: [], pending: null, entry: this.opts.entry || "web", photo: null, rating: null };
@@ -112,6 +121,9 @@ export class Bot {
       case "emailOther": return this.askEmail();
       case "qty": return this.setQty(arg.i, arg.packs);
       case "advice": return this.advice(arg);
+      case "compareIds": return this.compare(arg);
+      case "cancelYes": return this.service("cancel", { orderNo: arg, confirmed: true });
+      case "cancelNo": await this.ui.bot(`OK – order <b>${esc(arg)}</b> stays as it is.`); return this.menu();
       default: return this.fallback();
     }
   }
@@ -121,36 +133,73 @@ export class Bot {
     const s = this.s;
     this.ui.user(esc(text));
     const p = parse(text, { aliases: ALIASES });
-    const r = classify(text, { parsed: p });
+    // product names → the right item (Mach3 razor vs. Mach3 blades)
+    const prods = productsIn(p.fixed, p.entities.products || []);
+    if (prods.length) p.entities.products = prods; else delete p.entities.products;
+    const r = classify(text, { parsed: p, context: this.lastCat });
     const d = decide(r);
     this.lastClass = r;
     const isService = SERVICE_CATS.has(r.top);
     // 1. a typed value Sam asked for (name, e-mail, order number, postcode, description …)
-    if (s.pending?.input && !(d === "act" && (isService || r.top === "restart") && r.score >= 0.6 && !["orderNo", "email", "postcode"].includes(s.pending.input))) {
+    const switchTopic = (d === "act" && (isService || r.top === "restart") && r.score >= 0.6 && (!["orderNo", "email", "postcode"].includes(s.pending?.input) || (s.pending?.input === "orderNo" && r.top !== s.pending.flow && !p.entities.orderNo)))
+      // waiting for an order number but the shopper clearly moved on to something else (a new request with several facts)
+      || (s.pending?.input === "orderNo" && !p.entities.orderNo && ((d === "act" && r.top !== s.pending.flow && !["thanks", "greeting", "yes", "no"].includes(r.top)) || p.slotCount >= 2));
+    if (s.pending?.input && !switchTopic) {
       const pend = s.pending; s.pending = null;
       return this.onInput(pend, text, p);
     }
     if (!s.mode) { s.mode = "guest"; this.sig("session", "Guest – started typing without logging in"); this.ui.sys("Continuing as guest"); this.ui.profile(s); }
-    // 2. short yes / no
+    // 2. short yes / no – to the buttons on screen if they are a yes/no question
     const words = tokens(text).length;
-    if ((p.top === "yes" || p.top === "no") && words <= 3 && !(d === "act" && r.top !== "thanks" && r.top !== "bye")) return this.yesNo(p.top === "yes");
+    const neg = /^(no|nope|nah|non|nee|nein|none|not really|never ?mind|keep it|laat maar|laisse tomber|egal)\b/.test(p.fixed) || /\b(none|nothing|no razor|no handle|geen|aucun)\b.*\b(home|thuis|maison)\b/.test(p.fixed);
+    const yesOpt = (this.lastOpts || []).find((o) => /^yes\b/i.test(o.label)), noOpt = (this.lastOpts || []).find((o) => /^no\b/i.test(o.label));
+    if (neg && noOpt && words <= 6 && !(p.entities.handle && !/handle|razor/i.test(noOpt.label + JSON.stringify(noOpt.arg || {})))) { this.misses = 0; return this.act(noOpt.act, noOpt.arg); }
+    if (p.top === "yes" && yesOpt && words <= 3 && !s.pending?.confirm) { this.misses = 0; return this.act(yesOpt.act, yesOpt.arg); }
+    if ((p.top === "yes" || p.top === "no" || neg) && words <= 3 && !p.entities.handle && !(d === "act" && r.top !== "thanks" && r.top !== "bye")) return this.yesNo(p.top === "yes" && !neg);
     // 3. an answer to the buttons Sam just showed ("the first one", "home delivery", "unopened" …)
     const picked = this.matchOption(text, d);
     if (picked) { this.misses = 0; return this.act(picked.act, picked.arg); }
+    // 3b. references to what was just shown ("the second one", "the cheaper one", "add it", "blades for it")
+    if (await this.resolveReference(text, p, r, d)) { this.misses = 0; return; }
+    // 3b2. small follow-ups that need the context of the last answer
+    if (await this.followUp(text, p, r, d)) { this.misses = 0; return; }
+    // 3c. a bare order number continues the last service case or checks the order
+    const numOnly = p.fixed.match(/^\W*(?:(?:yes|yeah|ok|sure|ja|oui|it'?s|order|nr|no|number|commande|bestelling)\W*)*#?\s*([a-z]{0,3}-?\d{5,6})\b/);
+    const bareNo = numOnly || (p.entities.orderNo && SERVICE_CATS.has(this.lastCat) ? [null, p.entities.orderNo] : null);
+    if (bareNo && !(d === "act" && SERVICE_CATS.has(r.top) && r.top !== this.lastCat)) {
+      this.misses = 0;
+      const no = bareNo[1].toUpperCase();
+      const flow = ["refund", "wrong_item", "cancel", "order_status", "defect"].includes(this.lastCat) ? this.lastCat : ["billing", "human", "complaint"].includes(this.lastCat) ? null : "order_status";
+      if (!flow) { await this.ui.bot(`Thanks – I've added order <b>${esc(no)}</b> to your case so a colleague sees it straight away.`); this.sig("orderNo", `Order ${no} attached to the ${this.lastCat} case`); return this.opt([{ label: "Talk to a person", act: "cat", arg: { id: "human" }, icon: "phone" }, { label: "Back to shopping", act: "menu" }]); }
+      return this.service(flow, { orderNo: no, p });
+    }
     // 4. facts in the message always count
     const learned = this.applyEntities(p.entities);
+    // product named without a clear other request → show it ("show me the Mach3", "and the Fusion5?")
+    if (p.entities.products?.length && (!(d === "act") || ["find_product", "availability", "price", "compare"].includes(r.top)) && !SERVICE_CATS.has(r.top) && r.top !== "compat" && (r.top !== "compare" || p.entities.products.length < 2)) {
+      if (!(learned.length > 1 && !/\b(show|see|what about|and the|how much|price|do you have|i want (a|the)|tell me)\b/.test(p.fixed) && tokens(text).length > 6)) { this.misses = 0; return this.productInfo(p.entities.products, p); }
+    }
     // 5. Claude (presenter version / artifact) when Sam isn't sure
     if (d !== "act" && this.opts.ai?.available?.()) {
       const ok = await this.opts.ai.turn(text, this).catch(() => false);
       if (ok) { this.misses = 0; return; }
     }
     const shopTop = BY_CAT[r.top]?.group === "shop";
+    // facts answer Sam's open question while the category is unclear ("kinda sensitive tbh") → keep shopping
+    if (learned.length && d !== "act" && (s.lastAsked || s.rec)) { this.misses = 0; return this.shop(learned); }
     if (d === "act" || (learned.length && (shopTop || d === "guide"))) {
       this.misses = 0;
       const cat = d === "act" ? r.top : r.top === "gift" ? "gift" : "find_product";
       return this.runCat(cat, p, learned);
     }
     if (learned.length && s.rec) { this.misses = 0; return this.shop(learned); } // refining an existing routine
+    // the shopper repeats something Sam already knows ("none at home" after the routine assumed no handle)
+    const known = Object.entries(p.entities).filter(([k, v]) => ["handle", "skin", "area", "style", "owned", "for"].includes(k) && s.slots[k] === v);
+    if (!learned.length && known.length && s.rec && d !== "act") {
+      this.misses = 0;
+      await this.ui.bot(`Yes – that's already taken into account: <b>${esc(summary(s.slots).join(" · "))}</b>. ${s.slots.handle === "no" ? "The routine includes a razor with handle, so you're ready to start." : ""}`);
+      return this.opt([{ label: "Add routine to basket", act: "addRoutine", arg: this.promoOn(), primary: true }, { label: "Cheaper option", act: "cheaper" }, { label: "Something else", act: "menu" }]);
+    }
     if (d === "clarify") return this.clarify(r, text, learned);
     return this.guide(text);
   }
@@ -165,7 +214,7 @@ export class Bot {
       const i = { first: 0, "1st": 0, 1: 0, second: 1, "2nd": 1, 2: 1, third: 2, "3rd": 2, 3: 2, last: list.length - 1 }[ord[2]];
       return list[i] || null;
     }
-    if (d === "act" && this.lastClass.score > 0.55) return null; // a clear new request wins over the buttons
+    if (d === "act" && this.lastClass.score > 0.55 && this.lastClass.top !== this.lastCat) return null; // a clear new request wins over the buttons
     const tt = new Set(tokens(text));
     if (!tt.size || tt.size > 7) return null;
     let best = null, bs = 0, second = 0;
@@ -183,11 +232,18 @@ export class Bot {
   /** Run the handler of a category. */
   async runCat(id, p, learned = []) {
     const s = this.s;
+    const prevCat = this.lastCat;
+    this.lastCat = id;
     p = p || parse("", {});
     if (SERVICE_CATS.has(id)) return this.service(id, { p });
     if (ADVICE[id]) return this.advice(id);
     switch (id) {
-      case "find_product": return this.shop(learned);
+      case "find_product":
+        if (!learned.length && this.lastAdvice && prevCat === this.lastAdvice && /\b(buy|need|use|recommend|get|product|koop|acheter|kaufen)\b/.test(p.fixed || "")) {
+          const nx = (ADVICE[this.lastAdvice].next || [])[0];
+          if (nx) return this.act(nx.act, nx.arg);
+        }
+        return this.shop(learned);
       case "gift": if (s.slots.for !== "gift") { s.slots.for = "gift"; learned = [...learned, "for"]; } return this.shop(learned);
       case "compare": return this.compare(p.entities?.products);
       case "budget": if (s.rec) return this.cheaper(); if (!s.slots.budget) { s.slots.budget = "low"; learned = [...learned, "budget"]; } return this.shop(learned);
@@ -196,7 +252,7 @@ export class Bot {
       case "superplus_info": return this.superplusInfo();
       case "compat": return this.compat(p);
       case "availability": return this.availability(p);
-      case "store_stock": return this.store();
+      case "store_stock": return this.store(p);
       case "basket": return /\b(remove|delete|take out)\b/.test(p.fixed || "") ? this.removeFromBasket(p) : this.showBasket(true);
       case "checkout": return this.checkout();
       case "photo": return this.photoStart();
@@ -206,7 +262,7 @@ export class Bot {
       case "thanks": await this.ui.bot(`You're welcome${this.name ? ", " + esc(this.name) : ""}. Anything else?`); return this.menu();
       case "bye": await this.ui.bot("Thanks for chatting – enjoy your shave."); return this.opt([{ label: "Start over", act: "restart", primary: true, icon: "refresh" }]);
       case "restart": return this.ui.restart();
-      case "login": return this.login();
+      case "login": return this.login(p);
       case "out_of_scope": return this.outOfScope(p);
       default: return this.guide();
     }
@@ -215,6 +271,10 @@ export class Bot {
   /** Shopping: acknowledge what was understood, then ask only what's missing. */
   async shop(learned = []) {
     const s = this.s;
+    // the shopper answered something else than Sam's open question → don't ask it again, assume the usual
+    const DEF = { for: "me", area: "face", style: "short", gender: "m", handle: "no", skin: "normal" };
+    const q = s.lastAsked;
+    if (q && !s.slots[q] && learned.length && !learned.includes(q) && DEF[q]) { s.slots[q] = DEF[q]; this.sig(q, `Assumed “${DEF[q]}” – the shopper moved on without answering`); }
     if (learned.length) {
       await this.ui.bot(`Got it: <b>${esc(summary(s.slots).join(" · "))}</b>.`);
       for (const k of learned) this.sig(k, `Understood from text: “${k} = ${Array.isArray(s.slots[k]) ? s.slots[k].join(", ") : s.slots[k]}”`);
@@ -251,11 +311,120 @@ export class Bot {
     return this.guide();
   }
   async outOfScope(p) {
+    if (knownShare(p.text) < 0.34) return this.guide(p.text); // gibberish: say so honestly instead of "outside my scope"
     if (/\b(vegan|animal|tested|cruelty|ingredient)/.test(p.fixed || "")) {
       await this.ui.bot(`I don't have verified information on that here. Gillette's owner P&G states that it no longer tests consumer products on animals unless required by law – see <a href="https://us.pg.com/cruelty-free/" target="_blank" rel="noopener">pg.com</a>.`);
     } else await this.ui.bot("That's outside what I can help with – I'm here for shaving, beard care and your Delhaize orders.");
     this.misses = 0;
     return this.guide();
+  }
+
+  /** "the second one", "which is cheaper", "I'll take the cheaper one", "add it", "what blades fit it?" */
+  async resolveReference(text, p, r, d) {
+    const s = this.s, f = p.fixed;
+    let shown = (s.lastShown || []).filter((id) => BY_ID[id]);
+    if (shown.length < 2 && (s.mentioned || []).length > 1 && ordinalIn(f) !== null) shown = s.mentioned.slice(-3);
+    const focus = s.focus && BY_ID[s.focus] ? s.focus : shown.length === 1 ? shown[0] : null;
+    if (d === "act" && SERVICE_CATS.has(r.top)) return false;
+    // refills for the razor just shown / recommended
+    if (/\b(blades?|refills?|cartridges?|mesjes|lames|klingen)\b/.test(f) && (refersToIt(f) || /^(and|what about|en|et|und)\b/.test(f) || /\b(fit|for)\b/.test(f)) && !p.entities.products?.length) {
+      const sysId = [focus, ...shown, ...(s.rec?.steps || []).map((x) => x.item.id)].map((id) => id && systemOf(id)).find(Boolean) || s.slots.owned;
+      const sys = SYSTEMS[sysId];
+      if (sys) {
+        const fits = sysId === "mach3" ? ["mach3Blades"] : ["fusion5", "proglide"].includes(sysId) ? ["proglideBlades", "fusion5Blades"] : [];
+        if (fits.length) { await this.ui.bot(`These refills fit the <b>${sys.name}</b> handle${sysId !== "mach3" ? " (Fusion5 and ProGlide refills fit each other's handles)" : ""}:`); this.ui.products(fits); s.focus = fits[0]; }
+        else await this.ui.bot(`<b>${sys.name}</b> razors take their own ${sys.name} refills – ask at the service desk for the matching pack.`);
+        this.sig("context", `“it” = ${sys.name} from the previous answer`);
+        this.opt(fits.length ? [{ label: `Add ${BY_ID[fits[0]].short}`, act: "add", arg: fits[0], primary: true }, { label: "Something else", act: "menu" }] : [{ label: "Something else", act: "menu" }]);
+        return true;
+      }
+    }
+    if (!shown.length && !focus) {
+      if (mentionsAdd(f) && s.rec) { this.addItems(s.rec.steps.map((x) => x.item.id), this.promoOn()); await this.ui.bot("Added your routine."); await this.afterAdd(); return true; }
+      return false;
+    }
+    let pick = null;
+    const ord = ordinalIn(f);
+    if (ord !== null && shown.length > 1) pick = shown.at(ord) || null;
+    const cheaper = mentionsCheaper(f) && shown.length > 1 && /\b(which|one|the|wich|welke|lequel|welche|take|add|buy)\b/.test(f);
+    if (cheaper) pick = [...shown].sort((a, b) => BY_ID[a].price - BY_ID[b].price)[0];
+    const add = mentionsAdd(f) || (/\b(take|buy|want|neem|prends)\b/.test(f) && pick);
+    if (!pick && add && focus) pick = focus;
+    if (!pick && add && !focus && s.rec) { this.addItems(s.rec.steps.map((x) => x.item.id), this.promoOn()); await this.ui.bot("Added your routine."); await this.afterAdd(); return true; }
+    if (!pick) return false;
+    const it = BY_ID[pick];
+    s.focus = pick;
+    this.sig("context", `Reference resolved to ${it.short}`);
+    if (add) { this.addItems([pick], this.promoOn()); return this.afterAdd().then(() => true); }
+    if (cheaper && !asksPrice(f)) {
+      await this.ui.bot(`<b>${esc(it.short)}</b> is the cheaper one: ${eur(it.price)}${it.verified ? "" : " (indicative)"}.`);
+    } else await this.ui.bot(`<b>${esc(it.short)}</b> – ${eur(it.price)}${it.verified ? " at Delhaize" : " (indicative price)"}.${it.promo ? ` With SuperPlus: ${it.promo}.` : ""} ${esc(it.pitch || "")}`);
+    this.opt([{ label: `Add ${it.short}`, act: "add", arg: pick, primary: true }, { label: "Compare", act: "compare" }, { label: "Something else", act: "menu" }]);
+    return true;
+  }
+
+  /** Follow-ups that only make sense after a specific answer (tips, injuries, logins, refills, product types). */
+  async followUp(text, p, r, d) {
+    const s = this.s, f = p.fixed, last = this.lastCat, e = p.entities;
+    // "the second tip, explain more"
+    const ord = ordinalIn(f);
+    if (/\b(tip|step|point|conseil|tipp)\b/.test(f) && ord !== null && this.lastAdvice) {
+      const a = ADVICE[this.lastAdvice], tip = a.tips.at(ord);
+      if (tip) { await this.ui.bot(`Tip ${ord < 0 ? a.tips.length : ord + 1}: ${esc(tip)} Gillette explains it in more detail <a href="${a.source}" target="_blank" rel="noopener">here</a>.`); this.opt((a.next || []).concat([{ label: "Something else", act: "menu" }])); return true; }
+    }
+    // after blade advice / refills: "mine is a Fusion5" → the matching refills
+    if (["blade_change", "compat"].includes(last) && e.owned && SYSTEMS[e.owned]) {
+      const fits = e.owned === "mach3" ? ["mach3Blades"] : ["fusion5", "proglide"].includes(e.owned) ? ["proglideBlades", "fusion5Blades"] : [];
+      s.slots.owned = e.owned; s.slots.handle = "yes";
+      if (fits.length) { await this.ui.bot(`For your <b>${SYSTEMS[e.owned].name}</b> handle: ${e.owned === "mach3" ? "Mach3 refills" : "Fusion5 or ProGlide refills – both fit"}. Change the cartridge when the lubrication strip has faded (about 15–20 shaves).`); this.ui.products(fits); s.focus = fits[0]; this.opt([{ label: `Add ${BY_ID[fits[0]].short}`, act: "add", arg: fits[0], primary: true }, { label: "Current deals", act: "promo" }]); return true; }
+    }
+    // "which oil?" / "what trimmer?" → show the products of that type
+    const TYPE = { oil: ["kingCBeardOil", "kingCBeardSoftener"], trimmer: ["kingCStyleMaster", "kingCBeardTrimmer"], gel: ["fusion5SensitiveGel", "labsShavingGel", "kingCShaveCream"], care: ["skinAfterShaveBalm", "kingCMoisturiser", "labsMoisturiser"] };
+    if (e.wantType && TYPE[e.wantType] && /\b(which|what|welke|wat voor|quel|quelle|welche|best|recommend)\b/.test(f) && !e.products?.length && !SERVICE_CATS.has(r.top)) {
+      await this.productInfo(TYPE[e.wantType], p); return true;
+    }
+    // injury follow-up ("it's on my neck")
+    if (last === "injury" && /\b(neck|nek|cou|hals|chin|lip|kin|leg|been)\b/.test(f) && !(d === "act" && r.top !== "injury")) {
+      await this.ui.bot("On the neck the skin is thin: keep gentle pressure with a clean tissue for a few minutes, don't shave there for a couple of days, and use an alcohol-free balm afterwards. If it keeps bleeding after 10 minutes, see a doctor.");
+      this.opt([{ label: "Show sensitive-skin products", act: "irritation" }, { label: "Back to shopping", act: "menu" }]); return true;
+    }
+    // still stuck after a service / login answer → a person
+    if (["login", "human", "billing", "complaint", "order_status", "refund", "wrong_item", "defect", "invoice"].includes(last) && /\b(still (nothing|not|doesn'?t)|doesn'?t work|not working|werkt (nog steeds )?niet|toujours pas|geht (immer )?noch nicht|that'?s not ok|not ok|angry|furious|boos|en colere|wutend|unacceptable)\b/.test(f)) {
+      await this.ui.bot(`I'm sorry about this. A colleague can sort it out directly: Delhaize customer service, free on <b>${PHONE}</b> (Mon–Fri 7–21, Sat 8–18, Sun 8–13). I've noted your case so you don't have to repeat everything.`);
+      this.ui.ticket({ id: `CS-${rnd(5)}`, type: "Escalation", details: `Follow-up on: ${last.replace("_", " ")}`, next: "Mention this reference when you call." });
+      this.lastCat = "human";
+      this.opt([{ label: "Back to shopping", act: "menu" }]); return true;
+    }
+    // invoice for a company
+    if (last === "invoice" && /\b(vat|btw|tva|mwst|company|bedrijf|entreprise|firma|business)\b/.test(f)) {
+      await this.ui.bot(`For an invoice with your company's VAT number, contact customer service with the order number and your company details: <b>${PHONE}</b> or the form on help.delhaize.be.`);
+      this.opt([{ label: "Back to shopping", act: "menu" }]); return true;
+    }
+    // gift wrapping – honest answer
+    if (/\b(gift ?wrap\w*|wrap (it|them|this)|wrapped|inpakken|cadeauverpakking|emball\w*|papier cadeau|geschenkverpackung)\b/.test(f)) {
+      await this.ui.bot("I can't arrange gift wrapping in this chat. In store, ask the service desk – and the King C. Gillette and Venus sets already come in gift-ready boxes.");
+      this.opt([{ label: "Back to my gift", act: "set", arg: {} }, { label: "Something else", act: "menu" }]); return true;
+    }
+    return false;
+  }
+
+  /** Show named products ("show me the Mach3", "how much is the ProGlide?", "do you have King C. Gillette?"). */
+  async productInfo(ids, p) {
+    const s = this.s;
+    ids = ids.slice(0, 3);
+    const it = BY_ID[ids[0]];
+    s.focus = ids[0];
+    s.mentioned = [...(s.mentioned || []).filter((x) => !ids.includes(x)), ...ids].slice(-5);
+    this.lastCat = "find_product";
+    if (ids.length === 1) await this.ui.bot(`<b>${esc(it.short)}</b> – ${eur(it.price)}${it.verified ? " at Delhaize" : " (indicative price)"}.${it.promo ? ` With SuperPlus: ${esc(it.promo)}.` : ""}`);
+    else await this.ui.bot("Here they are:");
+    this.ui.products(ids);
+    const sys = systemOf(ids[0]);
+    const o = [{ label: `Add ${it.short}`, act: "add", arg: ids[0], primary: true }];
+    if (sys && SYSTEMS[sys].blades && ids[0] === SYSTEMS[sys].razor) o.push({ label: "Matching refills", act: "cat", arg: { id: "compat", text: `${SYSTEMS[sys].name} blades` } });
+    if (ids.length > 1) o.push({ label: "Compare them", act: "compareIds", arg: ids });
+    o.push({ label: "Find my match", act: "guest" });
+    this.opt(o);
   }
 
   applyEntities(e) {
@@ -269,6 +438,14 @@ export class Bot {
     if (["blades", "razor", "gel", "care"].includes(e.wantType) && !s.area) set("area", "face");
     if ((e.handle === "yes" || e.owned) && !s.for) set("for", "me");
     if (e.style && !s.area) set("area", e.style === "clean" ? "face" : "beard");
+    // shopping for oneself unless a gift is mentioned – avoids an extra question
+    if (!s.for && !e.for && (e.wantType || e.area || e.skin || e.owned || e.budget || e.style || e.products)) set("for", "me");
+    // a woman as recipient usually means legs & body (Venus) unless the area is named
+    if (e.gender === "f" && !s.area && !e.area) set("area", "body");
+    // a new recipient starts a new profile (the boyfriend's beard is not the dad's)
+    if (e.recipient && this.s.lastRecipient && e.recipient !== this.s.lastRecipient) { for (const k of ["area", "style", "skin", "handle", "owned", "concerns"]) if (!(k in e)) delete s[k]; this.s.rec = null; }
+    if (e.recipient) this.s.lastRecipient = e.recipient;
+    if (e.wantType === "trimmer" && !s.style && !e.style) set("style", "short");
     if (e.recipient && e.gender === "f" && !s.area) { /* ask area */ }
     return keys.filter((k) => !["recipient", "gender"].includes(k) || keys.length === 1 ? true : true);
   }
@@ -309,7 +486,12 @@ export class Bot {
     }
     if (pend.input === "orderNo") {
       const no = p.entities.orderNo || (text.match(/[a-z]{0,3}-?\d{4,}/i) || [])[0];
-      if (!no) { s.pending = pend; return this.ui.bot("I couldn't find an order number in that. It's on your confirmation e-mail, e.g. <b>DL-731554</b>. Or type “don't know”."); }
+      const unknown = /\b(don'?t know|no idea|not sure|weet (ik )?(het )?niet|sais pas|keine ahnung|lost it)\b/.test(p.fixed);
+      if (!no && (unknown || ((pend.tries || 0) >= 1 || ["wrong_item", "defect"].includes(pend.flow)) && tokens(text).length > 3)) {
+        if (["wrong_item", "defect", "refund"].includes(pend.flow)) return this.service(pend.flow, { ...pend, orderNo: "number to follow", description: text, productText: text });
+        if (unknown) { await this.ui.bot(`No problem – you'll find it in your confirmation e-mail or under “My orders” on delhaize.be. Customer service can also look it up: <b>${PHONE}</b>.`); return this.menu(); }
+      }
+      if (!no) { s.pending = { ...pend, tries: (pend.tries || 0) + 1 }; return this.ui.bot("I couldn't find an order number in that. It's on your confirmation e-mail, e.g. <b>DL-731554</b>. Or type “don't know”."); }
       return this.service(pend.flow, { ...pend, orderNo: no.toUpperCase() });
     }
     if (pend.input === "describe") return this.service(pend.flow, { ...pend, description: text });
@@ -328,8 +510,11 @@ export class Bot {
   }
 
   // ---------- login & members ----------
-  async login() {
+  async login(p) {
     this.ui.step(1);
+    if (/\b(password|wachtwoord|mot de passe|passwort|can'?t log|cannot log|forgot|vergeten|oublie|doesn'?t work|lukt niet)\b/.test(p?.fixed || "")) {
+      await this.ui.bot(`In this demo there are no passwords – just pick a demo customer below. In the real Delhaize app you'd use “Forgot password?” on the login screen; if that fails, customer service helps: <b>${PHONE}</b>.`);
+    }
     await this.ui.bot("Demo: pick a SuperPlus customer – each one is a different CRM profile.");
     this.ui.personas(this.crm);
     this.opt([{ label: "Continue as guest", act: "guest" }]);
@@ -387,12 +572,21 @@ export class Bot {
   async consult() {
     const s = this.s, sl = s.slots;
     this.ui.step(2);
+    this.inConsult = true;
     if (!s.mode) { s.mode = "guest"; this.sig("session", "Guest – no CRM record, learns from the chat"); }
+    // a question the shopper ignored twice gets a sensible default instead of a third ask
+    s.asked = s.asked || {};
+    const DEF = { for: "me", area: "face", style: "short", gender: "m", handle: "no", skin: "normal" };
+    for (const k of Object.keys(DEF)) if (!sl[k] && (s.asked[k] || 0) >= 2) { sl[k] = DEF[k]; this.sig(k, `Assumed “${DEF[k]}” – asked twice without an answer`); }
+    if (sl.for === "gift" && !sl.skin) sl.skin = "sensitive"; // gift buyers rarely know – gentle products are the safe choice
+    const ask = (k) => { s.asked[k] = (s.asked[k] || 0) + 1; s.lastAsked = k; };
     if (!sl.for) {
+      ask("for");
       await this.ui.bot("Let's find your match. Who are we shopping for?");
       return this.opt([{ label: "For me", act: "set", arg: { for: "me" } }, { label: "A gift", act: "set", arg: { for: "gift" } }]);
     }
     if (!sl.area) {
+      ask("area");
       await this.ui.bot(sl.for === "gift" ? "Nice! What does the person shave?" : "What do you want to shave or groom?");
       return this.opt([
         { label: "Face – clean shave", act: "set", arg: { area: "face" } },
@@ -402,6 +596,7 @@ export class Bot {
       ]);
     }
     if (sl.area === "beard" && !sl.style) {
+      ask("style");
       await this.ui.bot(sl.for === "gift" ? "What kind of beard does he have?" : "Which beard do you have – or want?");
       return this.opt([
         { label: "Stubble", act: "set", arg: { style: "stubble" } }, { label: "Short beard", act: "set", arg: { style: "short" } },
@@ -409,10 +604,12 @@ export class Bot {
       ]);
     }
     if (sl.area === "body" && sl.for === "me" && !sl.gender) {
+      ask("gender");
       await this.ui.bot("Which range should I show you?");
       return this.opt([{ label: "GilletteLabs Body (men)", act: "set", arg: { gender: "m" } }, { label: "Venus (women)", act: "set", arg: { gender: "f" } }]);
     }
     if ((sl.area === "face" || sl.area === "head") && sl.for !== "gift" && !sl.handle) {
+      ask("handle");
       await this.ui.bot("Do you already have a Gillette razor handle at home?");
       return this.opt([
         { label: "Yes – Fusion5 / ProGlide", act: "set", arg: { handle: "yes", owned: "fusion5" } },
@@ -421,6 +618,7 @@ export class Bot {
       ]);
     }
     if (!sl.skin) {
+      ask("skin");
       await this.ui.bot(sl.for === "gift" ? "Do you know how their skin reacts to shaving?" : "How does your skin react to shaving?");
       return this.opt([
         { label: "Sensitive / redness", act: "set", arg: { skin: "sensitive" } },
@@ -428,6 +626,8 @@ export class Bot {
         sl.for === "gift" ? { label: "Not sure", act: "set", arg: { skin: "sensitive" } } : { icon: "camera", label: "Check it with a photo", act: "photo" },
       ]);
     }
+    this.inConsult = false;
+    s.lastAsked = null;
     return this.recommendNow();
   }
 
@@ -437,10 +637,12 @@ export class Bot {
     const s = this.s;
     this.ui.step(3);
     s.step = 3;
+    const prevIds = s.rec ? s.rec.steps.map((x) => x.item.id).sort().join() : null;
     if (!keep) s.rec = recommend(s.slots);
     const r = s.rec;
     if (!r.steps.length) { await this.ui.bot("Hmm, I couldn't find a fitting product for that combination. Could you tell me a bit more?"); return this.menu(); }
-    const head = r.fixed ? `Here's ${r.why}.` : refine ? "Updated – here's your new routine:" : `${this.member ? `Here's your routine, ${esc(this.name)}` : "Here's your personal routine"}${s.photo ? " – based on your photo and answers" : ""}:`;
+    const same = refine && prevIds && prevIds === r.steps.map((x) => x.item.id).sort().join();
+    const head = r.fixed ? `Here's ${r.why}.` : same ? "Your routine already fits that – here it is again:" : refine ? "Updated – here's your new routine:" : `${this.member ? `Here's your routine, ${esc(this.name)}` : "Here's your personal routine"}${s.photo ? " – based on your photo and answers" : ""}:`;
     await this.ui.bot(head);
     if (this.member) this.sig("routine", r.steps.map((x) => x.item.short).join(" + "));
     this.ui.routine(r, { promo: this.promoOn(), member: this.member });
@@ -517,7 +719,10 @@ export class Bot {
   async cheaper() {
     const s = this.s; this.ui.step(4);
     const c = cheapest(s.slots);
-    await this.ui.bot(`Fair point. The cheapest way to get started: <b>${esc(c.short)}</b> for ${eur(c.price)}.`);
+    const current = [s.focus, ...(s.rec?.steps || []).map((x) => x.item.id)].filter(Boolean);
+    s.focus = c.id;
+    if (current.includes(c.id)) await this.ui.bot(`<b>${esc(c.short)}</b> (${eur(c.price)}) is already the most affordable option in this range.`);
+    else await this.ui.bot(`Fair point. The cheapest way to get started: <b>${esc(c.short)}</b> for ${eur(c.price)}.`);
     const blades = (s.rec?.steps || []).find((x) => x.item.promo);
     if (blades) await this.ui.bot(`Tip: with the SuperPlus 2+2 deal one ProGlide blade costs ${eur((blades.item.price * 2) / 16)} instead of ${eur(blades.item.price / 4)} – half price.${this.member ? "" : " SuperPlus is free and takes 30 seconds."}`);
     this.ui.products([c.id]);
@@ -565,6 +770,12 @@ export class Bot {
     if (mentioned.length >= 2) {
       const ok = compatibility(mentioned[0], mentioned[1]);
       await this.ui.bot(ok ? `Yes – <b>${names[mentioned[0]]}</b> and <b>${names[mentioned[1]]}</b> share the same click system – the refills fit each other's handles (except the battery-powered ProGlide Power, which takes Power refills).` : `No – <b>${names[mentioned[0]]}</b> and <b>${names[mentioned[1]]}</b> use different systems, so the blades don't fit. Fusion5 and ProGlide refills are interchangeable; Mach3 has its own.`);
+    } else if (mentioned.length === 1 && ["mach3", "fusion5", "proglide"].includes(mentioned[0])) {
+      const fits = mentioned[0] === "mach3" ? ["mach3Blades"] : ["proglideBlades", "fusion5Blades"];
+      await this.ui.bot(`Refills for the <b>${names[mentioned[0]]}</b> handle${mentioned[0] === "mach3" ? " (only Mach3 refills fit)" : " – Fusion5 and ProGlide refills both fit"}:`);
+      this.ui.products(fits);
+      this.s.focus = fits[0];
+      return this.opt([{ label: `Add ${BY_ID[fits[0]].short}`, act: "add", arg: fits[0], primary: true }, { label: "Current deals", act: "promo" }, { label: "Something else", act: "menu" }]);
     } else await this.ui.bot("Quick guide: <b>Fusion5 and ProGlide</b> refills fit each other's handles · <b>Mach3</b> refills fit only Mach3 handles · <b>GilletteLabs</b> and <b>SkinGuard</b> have their own blades. Which handle do you have?");
     if (owned) { this.s.slots.owned = owned; this.s.slots.handle = "yes"; }
     this.opt([{ label: "Show me refills", act: "set", arg: { wantType: "blades", area: this.s.slots.area || "face", handle: "yes", owned: owned || mentioned[0] || "fusion5" } }, { label: "Something else", act: "menu" }]);
@@ -580,9 +791,19 @@ export class Bot {
     this.ui.products(["proglideBlades"]);
     this.opt(this.member ? [{ label: "Add ProGlide 2+2", act: "add", arg: "proglideBlades", primary: true }, { label: "Something else", act: "menu" }] : [{ label: "Join SuperPlus", act: "signup", primary: true }, { label: "Find my razor", act: "guest" }]);
   }
-  async store() {
-    const st = this.member ? this.s.profile.store : "your Delhaize";
-    await this.ui.bot(`In ${esc(st)} you'll find Gillette in the <b>personal care aisle</b>. Razor blades are in locked cases – tap “Pick up at the service desk” at checkout and a colleague hands them over, no waiting.`);
+  async store(p) {
+    const f = p?.fixed || "";
+    const words = f.split(" ").filter((w) => w.length > 3 && !/^(delhaize|store|winkel|magasin|stock|open|opening|hours|where|what|time)$/.test(w));
+    const found = [...new Set(words.flatMap((w) => searchStores(w).map((x) => x.id)))].map(storeById).filter(Boolean).slice(0, 3);
+    const home = this.member ? storeByName(this.s.profile.store) : null;
+    const st = found[0] || home;
+    if (/\b(open|opening|hours|close|closing|uren|horaires|offnungszeiten|sunday|zondag|dimanche)\b/.test(f)) {
+      await this.ui.bot(`Opening hours differ per store${st ? ` – <b>${esc(st.name)}</b>` : ""}: you'll find the current hours on <a href="https://stores.delhaize.be/" target="_blank" rel="noopener">stores.delhaize.be</a>. Online orders can be collected in your chosen Delhaize Collect slot.`);
+    } else {
+      await this.ui.bot(`${st ? `In <b>${esc(st.name)}</b>` : "In every Delhaize"} you'll find Gillette in the <b>personal care aisle</b>. Blades are kept in locked cases – order here and pick them up at the service desk or via Delhaize Collect, so availability is confirmed before you go.`);
+    }
+    if (found.length) { this.sig("store", `Matched from text: ${found.map((x) => x.name).join(", ")}`); this.ui.storePicker({ stores: found, preferred: found[0].id }); }
+    this.lastCat = "store_stock";
     this.menu();
   }
 
@@ -608,6 +829,8 @@ export class Bot {
   async advice(topic) {
     const a = ADVICE[topic];
     if (!a) return this.guide();
+    this.lastAdvice = topic;
+    this.lastCat = topic;
     this.ui.step(4);
     this.sig("advice", `${topic} – tips from ${a.sourceName}`);
     await this.ui.bot(a.intro);
@@ -636,7 +859,12 @@ export class Bot {
     this.ui.profile(s);
     this.sig("photo", a.source === "ai" ? "Analysed by Claude in the viewer's own account" : "Analysed on this device – the image is not uploaded");
     this.ui.consultResult(a);
-    if (a.quality !== "ok") await this.ui.bot(`The photo is a bit ${a.quality} – the results may be less precise.`);
+    if (a.retake) {
+      this.sig("photo quality", `Retake asked: ${a.quality}`);
+      await this.ui.bot(`${esc(a.qualityText || `The photo is ${a.quality}.`)} For a reliable check I need a new photo – or we continue with two quick questions.`);
+      return this.opt([{ icon: "camera", label: "Try another photo", act: "photo", primary: true }, { label: "Skip – answer questions", act: "set", arg: {} }]);
+    }
+    if (a.quality !== "ok") await this.ui.bot(`The photo is a bit ${esc(a.quality)} – the results may be less precise.`);
     await this.ui.bot(`Did I get your facial hair right? It looks like <b>${a.beardLabel}</b>.`);
     const opts = [["clean", "Clean-shaven"], ["stubble", "Stubble"], ["short", "Short beard"], ["full", "Full beard"]];
     this.opt(opts.map(([k, l]) => ({ label: l, act: "beardIs", arg: k, primary: a.slots.style === k })));
@@ -782,6 +1010,7 @@ export class Bot {
   // ---------- service requests (typed) ----------
   async service(flow, ctx = {}) {
     const s = this.s; this.ui.step(4);
+    this.lastCat = flow;
     const p = ctx.p;
     if (p?.entities?.orderNo) ctx.orderNo = p.entities.orderNo;
     if (p?.entities?.products) ctx.product = p.entities.products[0];
@@ -866,10 +1095,19 @@ export class Bot {
       }
       const no = ctx.orderNo || lastOrder?.no;
       if (!no) { s.pending = { input: "orderNo", flow }; this.opt([]); this.ui.focusInput("Order number, e.g. DL-731554"); return this.ui.bot("Which order should I cancel? Please type the order number."); }
-      await this.ui.bot(`Order <b>${esc(no)}</b> wasn't prepared yet, so I've <b>cancelled</b> it. Any payment is refunded to the same payment method.`);
+      if (!ctx.confirmed) {
+        await this.ui.bot(`Cancel order <b>${esc(no)}</b>? Changes and cancellations are possible until 10:00 the day before pick-up (Delhaize Collect) or the evening before delivery.`);
+        s.pending = { confirm: { yes: "cancelYes", yesArg: no, no: "cancelNo", noArg: no } };
+        return this.opt([{ label: "Yes, cancel it", act: "cancelYes", arg: no }, { label: "No, keep it", act: "cancelNo", arg: no, primary: true }]);
+      }
+      await this.ui.bot(`Order <b>${esc(no)}</b> is <b>cancelled</b>. Any payment is refunded to the same payment method.`);
       return back();
     }
 
+    if (flow === "delivery_info" && /\b(change|modify|wijzig\w*|changer|modifier|andern|address|adres|adresse|slot|tijdslot|creneau)\b/.test(p?.fixed || "")) {
+      await this.ui.bot("You can change your order – delivery address, time slot or products – in your Delhaize account under “My orders”: for home delivery until 12:00 the day before (morning slot) or 21:00 the day before (afternoon slot); for Delhaize Collect until 10:00 the day before. After that, customer service can help: <b>" + PHONE + "</b>.");
+      return back();
+    }
     if (flow === "delivery_info") {
       await this.ui.bot(`<b>Home delivery</b> (Delhaize Delivery): from the next day, Monday–Saturday in two windows (7:00–14:00 or 14:00–21:00). The fee depends on day and slot – roughly €6–13, shown before you confirm – and the minimum order is €60. Enter your postcode on delhaize.be to see if your area is served.`);
       await this.ui.bot(`<b>Delhaize Collect</b>: free pick-up at one of ~170 collect points, minimum €30, you pay when you pick up. You can change or cancel until 10:00 the day before.`);
@@ -881,7 +1119,7 @@ export class Bot {
       const no = ctx.orderNo || lastOrder?.no;
       if (!no) { s.pending = { input: "orderNo", flow }; this.opt([]); this.ui.focusInput("Order number, e.g. DL-731554"); return this.ui.bot("Sorry about that. Which order was it? (The number is in your confirmation e-mail, e.g. DL-731554.)"); }
       if (!ctx.orderNo && lastOrder) this.sig("lastOrder", `Order ${no} picked from the CRM`);
-      await this.ui.bot(`Sorry about order <b>${esc(no)}</b>. Tip for next time: you can check the crates at the door or the collect point and refuse wrong items right there – they're taken off the bill. Found it later? I've reported it to customer service:`);
+      await this.ui.bot(`Sorry about ${no === "number to follow" ? "that order" : `order <b>${esc(no)}</b>`}. Tip for next time: you can check the crates at the door or the collect point and refuse wrong items right there – they're taken off the bill. Found it later? I've reported it to customer service:`);
       await ticket("Wrong / missing item", `Order ${esc(no)}`, "Customer service contacts you within 48 hours about a replacement or a refund. Keep the wrong item until then.");
       return back();
     }

@@ -83,7 +83,7 @@ export function positions(lm, out = new Float32Array(N_ALL * 3)) {
     out[o] = j.x + ex[0] * du + ey[0] * dv;
     out[o + 1] = j.y + ex[1] * du + ey[1] * dv;
     // hair below the jaw falls back towards the neck → tilt the skirt away from the camera (normals face down)
-    out[o + 2] = j.z + ex[2] * du + ey[2] * dv + 0.55 * Math.hypot(ex[0] * du + ey[0] * dv, ex[1] * du + ey[1] * dv);
+    out[o + 2] = j.z + ex[2] * du + ey[2] * dv + 0.25 * Math.hypot(ex[0] * du + ey[0] * dv, ex[1] * du + ey[1] * dv);
   }
   return out;
 }
@@ -97,6 +97,14 @@ export function normals(pos, aspect, out = new Float32Array(N_ALL * 3)) {
     const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
     const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
     for (const i of [INDICES[t], INDICES[t + 1], INDICES[t + 2]]) { out[3 * i] += n[0]; out[3 * i + 1] += n[1]; out[3 * i + 2] += n[2]; }
+  }
+  // skirt normals: follow the jaw vertex above them (slightly turned down) so the hair shells don't show seams
+  // between the skirt rings
+  const nj = JAW.length;
+  for (let k = 0; k < SKIRT_RINGS * nj; k++) {
+    const j = JAW[k % nj], r = Math.floor(k / nj) + 1, o = 3 * (N_VERTS + k);
+    const l = Math.hypot(out[3 * j], out[3 * j + 1], out[3 * j + 2]) || 1;
+    out[o] = out[3 * j] / l; out[o + 1] = out[3 * j + 1] / l + 0.25 * (r / SKIRT_RINGS); out[o + 2] = out[3 * j + 2] / l;
   }
   for (let i = 0; i < N_ALL; i++) {
     const l = Math.hypot(out[3 * i], out[3 * i + 1], out[3 * i + 2]) || 1;
@@ -410,10 +418,172 @@ export function paintHair(id, shade = "brown", size = TEX) {
   g.fillStyle = hl; g.fillRect(0, 0, size, size);
   g.globalCompositeOperation = "source-over";
   g.restore();
-  const r = { hair, shadow, empty: false };
+  // length map for the 3D shells: R = local hair length (0..1, thins out towards every edge), G = 0 on the lips
+  const lenData = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const o = (y * size + x) * 4;
+    lenData[o + 3] = 255;
+    if (inHole(x, y)) continue;
+    lenData[o + 1] = 255;
+    const d = md[o + 3] / 255;
+    if (d < 0.05) continue;
+    const c = cd[o + 3] / 255;
+    const v = d * (0.15 + 0.85 * Math.pow(c, 1.3)) * (0.72 + 0.56 * nz((x / size) * 30, (y / size) * 30));
+    lenData[o] = Math.min(255, Math.round(v * 255));
+  }
+  const r = { hair, shadow, empty: false, lenData, size };
   hairCache.set(key, r);
   return r;
 }
+
+// ---------- 3D volume: shells + fins ----------
+// The beard is drawn as N stacked "shells": copies of the face mesh pushed outward along the 3D normals (and, for long
+// styles, pulled down by gravity). Each shell keeps only the strands that are long enough to reach its height, and
+// strands get thinner towards the tip, so the hair has real thickness and parallax when the head turns. Fins along the
+// jaw/cheek contour stand out from the silhouette so the beard has depth from the side instead of a cut edge.
+export const SHELLS = {
+  stubble: { n: 3, h: 0.007, lean: 0.004, grav: 0, alpha: 0.55, density: 1.25 },
+  moustache: { n: 10, h: 0.028, lean: 0.016, grav: 0.25, alpha: 0.78, density: 1 },
+  circle: { n: 11, h: 0.032, lean: 0.024, grav: 0.3, alpha: 0.75, density: 1 },
+  short: { n: 12, h: 0.04, lean: 0.03, grav: 0.35, alpha: 0.75, density: 1 },
+  full: { n: 22, h: 0.09, lean: 0.065, grav: 0.6, alpha: 0.72, density: 0.9 },
+};
+/** Fin contours: cheek/jaw outline (with sideburns) and the rings of the beard skirt. */
+export const FIN_RINGS = (() => {
+  const n = JAW.length, rings = [[127, ...JAW, 356]];
+  for (let r = 1; r <= SKIRT_RINGS; r++) rings.push(Array.from({ length: n }, (_, i) => N_VERTS + (r - 1) * n + i));
+  return rings;
+})();
+const FIN_POINTS = FIN_RINGS.reduce((s, r) => s + r.length, 0);
+export const FIN_INDICES = (() => {
+  const idx = []; let base = 0;
+  for (const ring of FIN_RINGS) {
+    for (let i = 0; i < ring.length - 1; i++) { const a = base + 2 * i, b = a + 2; idx.push(a, a + 1, b + 1, a, b + 1, b); }
+    base += ring.length * 2;
+  }
+  return new Uint16Array(idx);
+})();
+/** Fin vertex data (10 floats each: pos3, tex2, n3, fin height 0|1, u along the contour). */
+export function finVertices(pos, nrm, out = new Float32Array(FIN_POINTS * 2 * 10)) {
+  let o = 0;
+  for (const ring of FIN_RINGS) {
+    let u = 0;
+    ring.forEach((v, i) => {
+      if (i) { const p = ring[i - 1]; u += Math.hypot(TEXCOORDS[2 * v] - TEXCOORDS[2 * p], TEXCOORDS[2 * v + 1] - TEXCOORDS[2 * p + 1]); }
+      for (const f of [0, 1]) {
+        out.set([pos[3 * v], pos[3 * v + 1], pos[3 * v + 2], TEXCOORDS[2 * v], TEXCOORDS[2 * v + 1], nrm[3 * v], nrm[3 * v + 1], nrm[3 * v + 2], f, u], o);
+        o += 10;
+      }
+    });
+  }
+  return out;
+}
+
+/** Strand cross-section map (tileable): R = strand length fraction, G = tone, B = unused, A = profile (1 centre → 0 edge). */
+let strandData = null;
+export function strandMap(size = 1024, cell = 5) {
+  if (strandData) return strandData;
+  const d = new Uint8Array(size * size * 4);
+  const rand = rng(4242);
+  for (let cy = 0; cy < size; cy += cell) for (let cx = 0; cx < size; cx += cell) {
+    const px = cx + rand() * cell, py = cy + rand() * cell, r = 1.6 + rand() * 1.2;
+    const t = Math.round((0.3 + 0.7 * Math.pow(rand(), 0.7)) * 255), tone = Math.round(rand() * 255);
+    for (let y = Math.floor(py - r); y <= Math.ceil(py + r); y++) for (let x = Math.floor(px - r); x <= Math.ceil(px + r); x++) {
+      const a = 1 - Math.hypot(x + 0.5 - px, y + 0.5 - py) / r;
+      if (a <= 0) continue;
+      const xx = (x + size) % size, yy = (y + size) % size, o = (yy * size + xx) * 4;
+      const v = Math.round(a * 255);
+      if (v > d[o + 3]) { d[o] = t; d[o + 1] = tone; d[o + 3] = v; }
+    }
+  }
+  strandData = { data: d, size };
+  return strandData;
+}
+
+const VS_SHELL = `#version 300 es
+in vec3 aPos; in vec2 aTex; in vec3 aN; in float aFin; in float aU;
+uniform float uMirror, uAspect, uHabs, uGrav, uFin, uH;
+uniform vec3 uDown;
+out vec2 vSrc; out vec2 vTex; out vec3 vN; out float vH; out float vU;
+void main(){
+  float h = uFin > .5 ? aFin : uH;
+  float hh = h * uHabs;
+  vec3 iso = vec3(aPos.x * uAspect, aPos.y, aPos.z * uAspect) + aN * hh + uDown * hh * h * uGrav;
+  vec3 p = vec3(iso.x / uAspect, iso.y, iso.z / uAspect);
+  vSrc = aPos.xy; vTex = aTex; vN = aN; vH = h; vU = aU;
+  float x = p.x * 2. - 1.;
+  if (uMirror > .5) x = -x;
+  gl_Position = vec4(x, 1. - p.y * 2., clamp(p.z * 3., -.98, .98), 1.);
+}`;
+const FS_SHELL = `#version 300 es
+precision highp float;
+uniform sampler2D uSrc, uLen, uStrand, uHair;
+uniform float uLod, uLean, uMirror, uFin, uAlpha, uMoustache, uDensity;
+uniform vec2 uRefA, uRefB, uRefC;
+uniform vec4 uGeo;   // texture coords: centre x, half face width, mouth y, chin y
+uniform float uNoseY;
+uniform vec3 uColor;
+in vec2 vSrc; in vec2 vTex; in vec3 vN; in float vH; in float vU; out vec4 o;
+float lum(vec3 c){ return dot(c, vec3(.299, .587, .114)); }
+float hash(float n){ return fract(sin(n * 12.9898) * 43758.5453); }
+vec2 growDir(vec2 t){
+  float rx = (t.x - uGeo.x) / uGeo.y;
+  bool must = t.y < uGeo.z - .002 && t.y > uNoseY - .006 && abs(t.x - uGeo.x) < uGeo.y * .4;
+  vec2 d = (uMoustache > .5 || must) ? vec2(rx * 2.4, 1.) : (abs(rx) > .72 && t.y < uGeo.z) ? vec2(rx * .12, 1.) : vec2(rx * (t.y > uGeo.w ? .22 : .5), 1.);
+  return normalize(d);
+}
+void main(){
+  if (texture(uLen, vTex).g < .5) discard;                 // never on the lips
+  float h = vH;
+  vec2 d = growDir(vTex);
+  vec2 uv = vTex - d * h * uLean;                         // strands lean along their growth direction
+  float len = texture(uLen, uv).r;
+  if (len < .03) discard;
+  float hr = h / len;                                      // height relative to the local hair length
+  if (hr > 1.) discard;
+  float cov, t, tone;
+  if (uFin > .5) {
+    float k = vU * 260. * uDensity, col = floor(k);
+    t = .3 + .7 * hash(col); tone = hash(col + 17.);
+    float w = abs(fract(k) - .5) * 2.;
+    cov = (1. - smoothstep(.25 + .4 * (1. - hr), .95, w)) * (1. - smoothstep(t - .1, t, hr));
+  } else {
+    vec4 s = texture(uStrand, uv * uDensity, -1.);
+    t = .3 + .7 * s.r; tone = s.g;
+    cov = smoothstep(hr * .7, hr * .7 + .22, s.a) * (1. - smoothstep(t - .1, t, hr));
+  }
+  // shells seen edge-on show their layers – fade them there (the fins take over at the silhouette)
+  if (uFin < .5) cov *= smoothstep(.12, .45, abs(normalize(vN).z));
+  if (cov < .02) discard;
+  // camera-based light at the root (so a strand is lit like the skin it grows from)
+  float la = lum(textureLod(uSrc, uRefA, uLod).rgb), lb = lum(textureLod(uSrc, uRefB, uLod).rgb), lc = lum(textureLod(uSrc, uRefC, uLod).rgb);
+  float ref = max((la + lb + lc) / 3., .04);
+  float light = mix(1., clamp(lum(textureLod(uSrc, vSrc, uLod).rgb) / ref, .32, 1.55), .7);
+  vec3 L = normalize(vec3((lb - la) / ref * 1.6, -.45, -1.)), V = vec3(0., 0., -1.), H = normalize(L + V);
+  vec3 n = normalize(vN);
+  // strand tangent: growth direction mapped from texture space to the screen, laid onto the surface
+  vec2 jx = dFdx(vTex), jy = dFdy(vTex);
+  mat2 J = mat2(jx, jy);
+  float det = determinant(J);
+  vec2 sd = abs(det) > 1e-12 ? inverse(J) * d : vec2(0., 1.);
+  sd.y = -sd.y; if (uMirror > .5) sd.x = -sd.x;
+  vec3 T = normalize(vec3(sd, 0.) + vec3(0., .001, 0.));
+  T = normalize(T - n * dot(n, T) * .85);
+  // Kajiya-Kay: diffuse ~ sin(T,L), two highlight lobes along the strand
+  float tl = dot(T, L), th = dot(T, H);
+  float diff = mix(.45, 1., sqrt(max(0., 1. - tl * tl)));
+  float spec1 = pow(sqrt(max(0., 1. - th * th)), 90.) * .07;
+  vec3 T2 = normalize(T + n * .3); float th2 = dot(T2, H);
+  float spec2 = pow(sqrt(max(0., 1. - th2 * th2)), 24.) * .05;
+  float self = mix(.55, 1., pow(hr, .7));                   // self-shadowing: inner shells darker
+  vec3 c = uColor * (.7 + .85 * tone) * (.9 + .35 * hr);  // lighter tips
+  // borrow the tuft / clump shading of the painted base layer so the volume isn't uniformly grainy
+  vec4 ph = texture(uHair, uv);
+  float pl = ph.a > .02 ? lum(ph.rgb / ph.a) / max(lum(uColor), .04) : 1.;
+  c *= clamp(mix(1., pl, .9), .5, 1.5);
+  vec3 col = c * diff * self * pow(light, .75) + (vec3(spec1) + uColor * 1.6 * spec2) * light * (.4 + .6 * hr);
+  o = vec4(col, cov * uAlpha);
+}`;
 
 // ---------- renderer ----------
 export class FaceRenderer {
@@ -428,13 +598,42 @@ export class FaceRenderer {
     const buf = (data, loc, size, usage) => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, usage); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0); return b; };
     this.pos = new Float32Array(N_ALL * 3); this.nrm = new Float32Array(N_ALL * 3);
     this.posBuf = buf(this.pos, gl.getAttribLocation(this.face, "aPos"), 3, gl.DYNAMIC_DRAW);
-    buf(TEXCOORDS, gl.getAttribLocation(this.face, "aTex"), 2, gl.STATIC_DRAW);
+    this.texBuf = buf(TEXCOORDS, gl.getAttribLocation(this.face, "aTex"), 2, gl.STATIC_DRAW);
     this.nBuf = buf(this.nrm, gl.getAttribLocation(this.face, "aN"), 3, gl.DYNAMIC_DRAW);
-    const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, INDICES, gl.STATIC_DRAW);
+    const ib = (this.ib = gl.createBuffer()); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, INDICES, gl.STATIC_DRAW);
     gl.bindVertexArray(null);
     this.emptyVao = gl.createVertexArray();
     this.srcTex = this.tex(); this.hairTex = this.tex(); this.shadowTex = this.tex();
     this.hairKey = null;
+    // 3D volume: shell program shares the face buffers; fins get their own interleaved buffer
+    this.shell = compile(gl, VS_SHELL, FS_SHELL);
+    const sp = this.shell, loc = (n) => gl.getAttribLocation(sp, n);
+    this.shellVao = gl.createVertexArray();
+    gl.bindVertexArray(this.shellVao);
+    const bind = (b, l, size) => { gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, size, gl.FLOAT, false, 0, 0); };
+    bind(this.posBuf, loc("aPos"), 3); bind(this.texBuf, loc("aTex"), 2); bind(this.nBuf, loc("aN"), 3);
+    gl.disableVertexAttribArray(loc("aFin")); gl.disableVertexAttribArray(loc("aU"));
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ib);
+    this.finData = new Float32Array(FIN_POINTS * 2 * 10);
+    this.finVao = gl.createVertexArray();
+    gl.bindVertexArray(this.finVao);
+    this.finBuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, this.finBuf); gl.bufferData(gl.ARRAY_BUFFER, this.finData, gl.DYNAMIC_DRAW);
+    [["aPos", 3, 0], ["aTex", 2, 3], ["aN", 3, 5], ["aFin", 1, 8], ["aU", 1, 9]].forEach(([n, size, off]) => { const l = loc(n); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, size, gl.FLOAT, false, 40, off * 4); });
+    const fib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, fib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, FIN_INDICES, gl.STATIC_DRAW);
+    gl.bindVertexArray(null);
+    this.lenTex = this.tex();
+    this.strandTex = this.tex();
+    const sm = strandMap();
+    this.uploadData(this.strandTex, sm.data, sm.size, true);
+    this.quality = 1; this.lastT = 0; this.ema = 0; this.shells = 0;
+  }
+  uploadData(t, data, size, repeat) {
+    const gl = this.gl;
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, size, size, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    if (repeat) { gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT); }
   }
   tex() {
     const gl = this.gl, t = gl.createTexture();
@@ -458,11 +657,14 @@ export class FaceRenderer {
     const h = paintHair(style, shade);
     this.upload(this.hairTex, h.hair, true);
     this.upload(this.shadowTex, h.shadow, true);
+    if (h.lenData) this.uploadData(this.lenTex, h.lenData, h.size, false);
+    const rgb = rgbOf(hexOf(shade)), l = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2];
+    this.hairColor = rgb.map((c) => (c * 0.82 + l * 0.18) / 255);
     this.hairKey = key; this.hairEmpty = h.empty;
     return !h.empty;
   }
   /** Draw one frame. src: video/image/canvas; lm: landmarks (normalised) or null. */
-  render(src, lm, { style = "short", shade = "brown", mirror = false, width, height } = {}) {
+  render(src, lm, { style = "short", shade = "brown", mirror = false, width, height, live = false, volume = true } = {}) {
     const gl = this.gl, c = this.canvas;
     const W = width || src.videoWidth || src.naturalWidth || src.width, H = height || src.videoHeight || src.naturalHeight || src.height;
     if (!W || !H) return;
@@ -498,6 +700,60 @@ export class FaceRenderer {
     gl.uniform2f(u("uRefB"), lm[280].x, lm[280].y);
     gl.uniform2f(u("uRefC"), lm[151].x, lm[151].y);
     gl.drawElements(gl.TRIANGLES, INDICES.length, gl.UNSIGNED_SHORT, 0);
+    if (volume && SHELLS[style]) this.drawVolume(lm, style, mirror, W, H, faceWpx, live);
     gl.bindVertexArray(null);
+  }
+  /** Shells (inner → outer) and fins, alpha-blended, depth-tested against the face so the far side stays hidden. */
+  drawVolume(lm, style, mirror, W, H, faceWpx, live) {
+    const gl = this.gl, cfg = SHELLS[style], p = this.shell, u = (n) => gl.getUniformLocation(p, n);
+    // adaptive quality: fewer shells when frames get slow (live camera only)
+    if (live) {
+      const now = performance.now();
+      if (this.lastT) { const dt = now - this.lastT; this.ema = this.ema ? this.ema * 0.85 + dt * 0.15 : dt; if (this.ema > 40) this.quality = Math.max(0.3, this.quality * 0.97); else if (this.ema < 28) this.quality = Math.min(1, this.quality * 1.01); }
+      this.lastT = now;
+    }
+    const n = Math.max(2, Math.round(cfg.n * (live ? this.quality : 1)));
+    this.shells = n;
+    const aspect = W / H, P = (i) => [lm[i].x * aspect, lm[i].y, lm[i].z * aspect];
+    const a = P(234), b = P(454), top = P(10), chin = P(152);
+    const faceIso = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    const down = [chin[0] - top[0], chin[1] - top[1], chin[2] - top[2]], dl = Math.hypot(...down) || 1;
+    gl.useProgram(p);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.srcTex); gl.uniform1i(u("uSrc"), 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.lenTex); gl.uniform1i(u("uLen"), 1);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.strandTex); gl.uniform1i(u("uStrand"), 2);
+    gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, this.hairTex); gl.uniform1i(u("uHair"), 3);
+    gl.uniform1f(u("uMirror"), mirror ? 1 : 0);
+    gl.uniform1f(u("uAspect"), aspect);
+    // with fewer shells (slow device) the hair gets a little shorter instead of showing gaps between layers
+    gl.uniform1f(u("uHabs"), cfg.h * faceIso * Math.min(1, Math.max(0.5, n / (cfg.n * 0.7))));
+    gl.uniform1f(u("uGrav"), cfg.grav);
+    gl.uniform3f(u("uDown"), down[0] / dl, down[1] / dl, down[2] / dl);
+    gl.uniform1f(u("uLean"), cfg.lean);
+    gl.uniform1f(u("uAlpha"), cfg.alpha);
+    gl.uniform1f(u("uDensity"), cfg.density);
+    gl.uniform1f(u("uMoustache"), style === "moustache" ? 1 : 0);
+    gl.uniform1f(u("uLod"), Math.max(0, Math.log2(faceWpx / 14)));
+    gl.uniform2f(u("uRefA"), lm[50].x, lm[50].y); gl.uniform2f(u("uRefB"), lm[280].x, lm[280].y); gl.uniform2f(u("uRefC"), lm[151].x, lm[151].y);
+    gl.uniform4f(u("uGeo"), TEXCOORDS[2 * 152], (TEXCOORDS[2 * 454] - TEXCOORDS[2 * 234]) / 2, TEXCOORDS[2 * 13 + 1], TEXCOORDS[2 * 152 + 1]);
+    gl.uniform1f(u("uNoseY"), TEXCOORDS[2 * 2 + 1]);
+    gl.uniform3f(u("uColor"), ...this.hairColor);
+    gl.enable(gl.BLEND); gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE);
+    gl.depthMask(false); gl.depthFunc(gl.LEQUAL);
+    // shells
+    gl.bindVertexArray(this.shellVao);
+    gl.vertexAttrib1f(gl.getAttribLocation(p, "aFin"), 0); gl.vertexAttrib1f(gl.getAttribLocation(p, "aU"), 0);
+    gl.uniform1f(u("uFin"), 0);
+    for (let i = 1; i <= n; i++) { gl.uniform1f(u("uH"), i / n); gl.drawElements(gl.TRIANGLES, INDICES.length, gl.UNSIGNED_SHORT, 0); }
+    // fins (both sides visible)
+    if (style !== "stubble") {
+      finVertices(this.pos, this.nrm, this.finData);
+      gl.bindVertexArray(this.finVao);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.finBuf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.finData);
+      gl.disable(gl.CULL_FACE);
+      gl.uniform1f(u("uFin"), 1);
+      gl.drawElements(gl.TRIANGLES, FIN_INDICES.length, gl.UNSIGNED_SHORT, 0);
+    }
+    gl.depthMask(true); gl.disable(gl.BLEND);
   }
 }

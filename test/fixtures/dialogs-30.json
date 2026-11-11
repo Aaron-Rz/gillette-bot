@@ -1,0 +1,520 @@
+[
+ {
+  "id": "d01",
+  "turns": [
+   {
+    "user": "I need a razor for sensitive skin",
+    "expect": "recommends a razor suited to sensitive skin"
+   },
+   {
+    "user": "cheaper?",
+    "expect": "shows a cheaper razor option"
+   },
+   {
+    "user": "and what blades fit it?",
+    "expect": "lists compatible blades for the recommended razor"
+   }
+  ]
+ },
+ {
+  "id": "d02",
+  "turns": [
+   {
+    "user": "looking for a gift for my dad",
+    "expect": "starts gift flow, maybe asks about dad's shaving habits"
+   },
+   {
+    "user": "he's 65, uses a really old razor",
+    "expect": "recommends an easy classic razor or set for an older man"
+   },
+   {
+    "user": "ok and something under 30?",
+    "expect": "narrows to options under 30 euro"
+   }
+  ]
+ },
+ {
+  "id": "d03",
+  "turns": [
+   {
+    "user": "show me the Mach3",
+    "expect": "presents the Mach3"
+   },
+   {
+    "user": "and the Fusion5?",
+    "expect": "presents Fusion5, possibly compares"
+   },
+   {
+    "user": "the second one, how much?",
+    "expect": "gives the Fusion5 price"
+   }
+  ]
+ },
+ {
+  "id": "d04",
+  "turns": [
+   {
+    "user": "hi, need a razor",
+    "expect": "asks a short question about skin or needs or recommends"
+   },
+   {
+    "user": "kinda sensitive tbh",
+    "expect": "treats as sensitive skin and recommends accordingly"
+   },
+   {
+    "user": "nah none at home",
+    "expect": "understands no razor at home, suggests a starter option"
+   }
+  ]
+ },
+ {
+  "id": "d05",
+  "turns": [
+   {
+    "user": "recommend me a razor",
+    "expect": "recommends or asks one clarifying question"
+   },
+   {
+    "user": "actually I have sensitive skin",
+    "expect": "adapts recommendation to sensitive skin"
+   },
+   {
+    "user": "is it on promo?",
+    "expect": "checks promo for the recommended item or explains promos"
+   }
+  ]
+ },
+ {
+  "id": "d06",
+  "turns": [
+   {
+    "user": "I want a ProGlide",
+    "expect": "presents ProGlide"
+   },
+   {
+    "user": "where is my order btw",
+    "expect": "switches to order status and asks for the order number"
+   },
+   {
+    "user": "48213",
+    "expect": "looks up order 48213 or reports its status"
+   }
+  ]
+ },
+ {
+  "id": "d07",
+  "turns": [
+   {
+    "user": "how much is a Mach3 handle",
+    "expect": "gives the price"
+   },
+   {
+    "user": "and the blades?",
+    "expect": "gives price of Mach3 blades"
+   },
+   {
+    "user": "anything on offer?",
+    "expect": "mentions current promotions on Mach3 or says none"
+   }
+  ]
+ },
+ {
+  "id": "d08",
+  "turns": [
+   {
+    "user": "bonjour, je cherche un rasoir",
+    "expect": "greets in French and asks about needs"
+   },
+   {
+    "user": "pour peau sensible",
+    "expect": "recommends in French for sensitive skin"
+   },
+   {
+    "user": "et moins cher ?",
+    "expect": "shows a cheaper option in French"
+   }
+  ]
+ },
+ {
+  "id": "d09",
+  "turns": [
+   {
+    "user": "hallo, ik zoek een scheermes",
+    "expect": "replies in Dutch and asks or recommends"
+   },
+   {
+    "user": "voor mijn zoon, hij is 16",
+    "expect": "recommends starter razor for a teen"
+   },
+   {
+    "user": "is er iets goedkoper?",
+    "expect": "shows a cheaper option in Dutch"
+   }
+  ]
+ },
+ {
+  "id": "d10",
+  "turns": [
+   {
+    "user": "my face burns after shaving",
+    "expect": "gives razor burn advice"
+   },
+   {
+    "user": "what should I buy for that",
+    "expect": "recommends a sensitive-skin razor or aftercare product"
+   },
+   {
+    "user": "ok thanks",
+    "expect": "acknowledges thanks briefly"
+   }
+  ]
+ },
+ {
+  "id": "d11",
+  "turns": [
+   {
+    "user": "I want to grow a beard",
+    "expect": "gives beard growing tips"
+   },
+   {
+    "user": "it itches so bad",
+    "expect": "switches to itch care advice, oil or balm, washing"
+   },
+   {
+    "user": "which oil",
+    "expect": "explains oil choice or says what the store offers"
+   }
+  ]
+ },
+ {
+  "id": "d12",
+  "turns": [
+   {
+    "user": "do you sell Venus",
+    "expect": "confirms availability of Venus"
+   },
+   {
+    "user": "for my girlfriend, gift",
+    "expect": "moves to gift advice for Venus"
+   },
+   {
+    "user": "wrap it?",
+    "expect": "answers about gift wrap honestly or says it cannot"
+   }
+  ]
+ },
+ {
+  "id": "d13",
+  "turns": [
+   {
+    "user": "how do I cancel my order",
+    "expect": "asks for the order number or explains cancelling"
+   },
+   {
+    "user": "12345",
+    "expect": "processes lookup or explains cancellation status"
+   },
+   {
+    "user": "never mind, keep it",
+    "expect": "leaves the order as is and confirms"
+   }
+  ]
+ },
+ {
+  "id": "d14",
+  "turns": [
+   {
+    "user": "I got the wrong blades",
+    "expect": "asks for order details and apologises"
+   },
+   {
+    "user": "I ordered ProGlide and received Mach3",
+    "expect": "registers wrong item and explains next steps"
+   },
+   {
+    "user": "can I get a refund instead?",
+    "expect": "explains refund option"
+   }
+  ]
+ },
+ {
+  "id": "d15",
+  "turns": [
+   {
+    "user": "how do i log in",
+    "expect": "explains login"
+   },
+   {
+    "user": "it says wrong password",
+    "expect": "gives password reset help"
+   },
+   {
+    "user": "still nothing",
+    "expect": "offers human help or alternatives"
+   }
+  ]
+ },
+ {
+  "id": "d16",
+  "turns": [
+   {
+    "user": "hey",
+    "expect": "greets and offers help"
+   },
+   {
+    "user": "what can you do",
+    "expect": "lists capabilities"
+   },
+   {
+    "user": "ok, find me a razor then",
+    "expect": "starts product finding"
+   }
+  ]
+ },
+ {
+  "id": "d17",
+  "turns": [
+   {
+    "user": "shave my head, what do i need",
+    "expect": "recommends head-shaving tips and products"
+   },
+   {
+    "user": "I get bumps afterwards",
+    "expect": "switches to ingrown or razor bumps advice"
+   },
+   {
+    "user": "the second tip, explain more",
+    "expect": "expands on the second tip given"
+   }
+  ]
+ },
+ {
+  "id": "d18",
+  "turns": [
+   {
+    "user": "compare mach3 and fusion5",
+    "expect": "compares both"
+   },
+   {
+    "user": "which is cheaper",
+    "expect": "states which is cheaper"
+   },
+   {
+    "user": "ok I'll take the cheaper one",
+    "expect": "adds it to basket or offers to"
+   },
+   {
+    "user": "add to cart",
+    "expect": "adds item to the basket"
+   }
+  ]
+ },
+ {
+  "id": "d19",
+  "turns": [
+   {
+    "user": "is the proglide in stock at Delhaize Gent",
+    "expect": "checks or explains store stock"
+   },
+   {
+    "user": "and the opening hours?",
+    "expect": "gives hours or explains how to check them"
+   },
+   {
+    "user": "thanks bye",
+    "expect": "closes politely"
+   }
+  ]
+ },
+ {
+  "id": "d20",
+  "turns": [
+   {
+    "user": "I want to try a beard style",
+    "expect": "offers virtual beard try-on"
+   },
+   {
+    "user": "can I use my phone camera",
+    "expect": "explains camera use for the try-on"
+   },
+   {
+    "user": "is my photo stored?",
+    "expect": "answers privacy question honestly"
+   }
+  ]
+ },
+ {
+  "id": "d21",
+  "turns": [
+   {
+    "user": "I cut myself shaving, bleeding",
+    "expect": "gives first aid advice and is calm"
+   },
+   {
+    "user": "its on my neck",
+    "expect": "gives neck-specific advice, suggests medical help if severe"
+   },
+   {
+    "user": "will the razor be replaced?",
+    "expect": "explains defect or complaint route"
+   }
+  ]
+ },
+ {
+  "id": "d22",
+  "turns": [
+   {
+    "user": "what are superplus points",
+    "expect": "explains the Delhaize loyalty points"
+   },
+   {
+    "user": "do I get them online too",
+    "expect": "answers loyalty points for online orders"
+   },
+   {
+    "user": "cool, any deals then",
+    "expect": "shows current promos"
+   }
+  ]
+ },
+ {
+  "id": "d23",
+  "turns": [
+   {
+    "user": "I need an invoice",
+    "expect": "asks for order number or explains invoice download"
+   },
+   {
+    "user": "for my company with VAT",
+    "expect": "explains adding VAT details"
+   },
+   {
+    "user": "thanks",
+    "expect": "acknowledges thanks"
+   }
+  ]
+ },
+ {
+  "id": "d24",
+  "turns": [
+   {
+    "user": "can I talk to a person",
+    "expect": "offers human handoff"
+   },
+   {
+    "user": "it's about my order",
+    "expect": "asks for order number and offers handoff"
+   },
+   {
+    "user": "77120",
+    "expect": "looks up or hands over with order context"
+   }
+  ]
+ },
+ {
+  "id": "d25",
+  "turns": [
+   {
+    "user": "gift for my girlfriend",
+    "expect": "starts gift suggestions for her"
+   },
+   {
+    "user": "she likes Venus",
+    "expect": "recommends Venus products"
+   },
+   {
+    "user": "cheaper version",
+    "expect": "shows cheaper Venus option"
+   },
+   {
+    "user": "add it",
+    "expect": "adds to basket"
+   }
+  ]
+ },
+ {
+  "id": "d26",
+  "turns": [
+   {
+    "user": "how do I change the cartridge",
+    "expect": "explains blade change"
+   },
+   {
+    "user": "mine is a Fusion5",
+    "expect": "gives Fusion5-specific instructions"
+   },
+   {
+    "user": "how often",
+    "expect": "says typical replacement frequency"
+   }
+  ]
+ },
+ {
+  "id": "d27",
+  "turns": [
+   {
+    "user": "my beard is patchy",
+    "expect": "gives growing or trimming advice"
+   },
+   {
+    "user": "should I trim or let it grow",
+    "expect": "advises on both options for patchy beards"
+   },
+   {
+    "user": "ok and what trimmer",
+    "expect": "recommends tools or says what the shop offers"
+   }
+  ]
+ },
+ {
+  "id": "d28",
+  "turns": [
+   {
+    "user": "hi, where's my package",
+    "expect": "greets and asks for order number"
+   },
+   {
+    "user": "it's 55931 ordered last week",
+    "expect": "looks up order 55931"
+   },
+   {
+    "user": "can I change the delivery address",
+    "expect": "explains address change options or hands over"
+   }
+  ]
+ },
+ {
+  "id": "d29",
+  "turns": [
+   {
+    "user": "combien coûte la livraison",
+    "expect": "gives delivery costs in French"
+   },
+   {
+    "user": "and pick-up in store?",
+    "expect": "explains click and collect in French"
+   },
+   {
+    "user": "merci, bonne journée",
+    "expect": "closes politely in French"
+   }
+  ]
+ },
+ {
+  "id": "d30",
+  "turns": [
+   {
+    "user": "I got charged twice",
+    "expect": "asks for order details about double charge"
+   },
+   {
+    "user": "yes order 48213, 2x 14.99",
+    "expect": "handles billing issue, escalates or explains steps"
+   },
+   {
+    "user": "that's not ok, I'm angry",
+    "expect": "empathises and offers escalation to a human"
+   }
+  ]
+ }
+]

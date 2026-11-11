@@ -145,7 +145,10 @@ export function summary(s) {
 export function cheapest(s) {
   const r = rolesFor(s).find((x) => ["shave", "blades", "trim"].includes(x)) || "shave";
   const pool = r === "blades" ? [BY_ID[bladesFor(s)], ...best("shave", s)] : best(r, s);
-  return pool.filter(Boolean).sort((a, b) => a.price - b.price)[0];
+  let list = pool.filter(Boolean);
+  const g = s.gender || (s.owned === "venus" ? "f" : null);
+  if (g && list.some((p) => p.gender === g)) list = list.filter((p) => p.gender === g); // stay in her/his range
+  return list.sort((a, b) => a.price - b.price)[0];
 }
 
 /** Compatibility answers for "does X fit Y?" questions. */

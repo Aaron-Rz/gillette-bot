@@ -78,7 +78,7 @@ razor razors blade blades cartridge cartridges refill refills gel foam cream bal
 remboursement rembourser retour retourner terugbetaling terugbetalen terugsturen commande bestelling livraison levering
 cadeau vriend copain mari papa barbe baard peau huid gevoelig sensible`.split(/\s+/).filter(Boolean));
 // Common words that must never be "corrected" into a vocabulary word.
-const KEEP = new Set(`shave shaves shaving shaver skin hair hairs about would could should think thing things there their
+const KEEP = new Set(`none nothing replaced replace replacing nobody shave shaves shaving shaver skin hair hairs about would could should think thing things there their
 these those where which while always never really maybe something anything everything thanks great hello other
 another little first second third right wrong today tomorrow yesterday month weeks years since after before
 started start lately often again still using works worked shower water smooth close closer quick quickly
@@ -114,6 +114,7 @@ const INTENTS = [
   I("order_status", 2.5, /\b((has|did|is) my (order|parcel|package|delivery) (arrived?|come|coming|here|shipped|ready))\b/),
   I("order_status", 1, /\bmy (order|parcel|package)\b/),
   I("defect", 3, /\b(broken|defective|damaged|faulty|(doesn'?t|does not|stopped|isn'?t|not) work(ing)?|rust(y)?|cracked|leak(ing|s)?|snapped|fell (off|apart)|won'?t (charge|turn on)|battery (is )?(dead|empty)|missing (part|blade|piece))\b/),
+  I("defect", 2.5, /\b((be|get (it|them|a)) replac\w*|replacement (razor|product|one)|vervangen worden|remplace|ersetzt)\b/),
   I("injury", 3, /\b(cut myself|(cut|nicked) (my|the) (face|skin|lip|chin|neck|legs?)|bleed(ing)?|blood|nicked|allerg(ic|y)|(skin )?reaction|rash|swell(ing|ed|en)|bad razor burn|burns? (a lot|badly))\b/),
   I("cancel", 3, /\b(cancel(lation)?|unsubscribe|stop (my )?(subscription|order))\b/),
   I("invoice", 2, /\b(invoice|receipt|bill|factuur|facture)\b/),
@@ -135,6 +136,7 @@ const INTENTS = [
   I("greeting", 0.6, /^(hi|hey|hello|hiya|yo|good (morning|evening|afternoon)|bonjour|salut|hallo|goedendag|goeiedag|dag)\b/),
   I("thanks", 0.8, /\b(thanks?|thank you|cheers|merci|dank (je|u)|bedankt)\b/),
   I("bye", 0.8, /\b(bye|goodbye|that'?s all|see you|ciao)\b/),
+  I("bye", 3, /\b(bonne (journee|soiree)|au revoir|fijne dag|tot ziens|schonen tag|tschuss|have a (nice|good) (day|evening))\b/),
   I("restart", 3, /\b(start (over|again)|restart|reset|new chat|from the beginning)\b/),
   I("yes", 0.5, /^(yes|yeah|yep|yup|sure|ok(ay)?|please( do)?|go ahead|sounds good|perfect|great|do it|why not)\b/),
   I("no", 0.5, /^(no|nope|nah|not now|no thanks|not really|maybe later)\b/),
@@ -143,8 +145,8 @@ const INTENTS = [
 
 // ---------- entities ----------
 const RECIPIENT = [
-  [/\b(boyfriend|husband|partner|dad|daddy|father|papa|brother|son|grandpa|grandfather|uncle|copain|mari|vriend)\b/, "m"],
-  [/\b(girlfriend|wife|mum|mom|mother|sister|daughter|grandma)\b/, "f"],
+  [/\b(boyfriend|husband|partner|dad|daddy|father|papa|brother|son|grandpa|grandfather|uncle|copain|mari|vriend|zoon|vader|broer|echtgenoot|opa|fils|pere|frere|grand-pere|sohn|vater|bruder|freund|ehemann|opa)\b/, "m"],
+  [/\b(girlfriend|wife|mum|mom|mother|sister|daughter|grandma|vriendin|vrouw|moeder|mama|zus|dochter|oma|copine|femme|mere|soeur|fille|freundin|frau|mutter|schwester|tochter)\b/, "f"],
   [/\b(friend|colleague|boss)\b/, "?"],
 ];
 const AREA = [
@@ -197,7 +199,7 @@ export function extractEntities(t) {
   // owned razor & handle
   for (const [k, re] of OWNED) if (re.test(t)) { e.owned = k; break; }
   if (e.owned && /\b(i have|i own|i use|i've got|got a|my|using)\b/.test(t)) e.handle = ["mach3", "proglide", "fusion5", "labs", "skinguard"].includes(e.owned) ? "yes" : undefined;
-  if (/\b(no (razor|handle)|don'?t have (a )?(razor|handle)|new to shaving|first (razor|time))\b/.test(t)) e.handle = "no";
+  if (/\b(no (razor|handle)|don'?t have (a |one|any)?(razor|handle)?|(none|nothing|no razor|no handle) (at )?home|new to shaving|first (razor|time)|geen (scheermes|houder)|pas de rasoir|keinen rasierer)\b/.test(t)) e.handle = "no";
   // beard style
   for (const [k, re] of STYLE) if (re.test(t)) { e.style = k; break; }
   // budget

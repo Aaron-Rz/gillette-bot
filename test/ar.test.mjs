@@ -65,3 +65,29 @@ test("One-Euro filter smooths jitter but follows real movement", () => {
 test("every try-on style lists products", () => {
   for (const s of STYLES) assert.ok(s.products.length >= 2 && s.note);
 });
+
+test("3D volume: every beard style has shells, fins follow the jaw/skirt contours", async () => {
+  const { SHELLS, FIN_RINGS, FIN_INDICES, finVertices } = await import("../js/ar-gl.js");
+  for (const s of ["stubble", "moustache", "circle", "short", "full"]) assert.ok(SHELLS[s].n >= 3 && SHELLS[s].h > 0);
+  assert.ok(SHELLS.full.n >= 20 && SHELLS.full.h > SHELLS.short.h && SHELLS.stubble.n <= 3);
+  const pts = FIN_RINGS.reduce((s, r) => s + r.length, 0);
+  assert.equal(FIN_INDICES.length, FIN_RINGS.reduce((s, r) => s + (r.length - 1) * 6, 0));
+  assert.ok(Math.max(...FIN_INDICES) < pts * 2);
+  const pos = positions(frontal), nrm = normals(pos, 1);
+  const fv = finVertices(pos, nrm);
+  assert.equal(fv.length, pts * 2 * 10);
+  // root and tip vertex of a fin share position/normal; only the height flag differs
+  assert.equal(fv[8], 0); assert.equal(fv[18], 1); assert.equal(fv[0], fv[10]);
+});
+
+test("photo framing keeps the whole face plus beard room and matches the stage shape", async () => {
+  const { faceCrop } = await import("../js/ar.js");
+  // small face in a big landscape photo
+  const lm = frontal.map((p) => ({ x: 0.45 + (p.x - 0.5) * 0.2, y: 0.4 + (p.y - 0.5) * 0.25, z: 0 }));
+  const c = faceCrop(lm, 2000, 1300, 3 / 4);
+  const ys = lm.map((p) => p.y * 1300), xs = lm.map((p) => p.x * 2000);
+  assert.ok(c.y <= Math.min(...ys) && c.y + c.h >= Math.max(...ys) + (Math.max(...ys) - Math.min(...ys)) * 0.5, "chin + beard room inside");
+  assert.ok(c.x <= Math.min(...xs) && c.x + c.w >= Math.max(...xs));
+  assert.ok(Math.abs(c.w / c.h - 3 / 4) < 0.01, "stage aspect");
+  assert.ok(c.w < 2000 * 0.6, "zoomed in");
+});

@@ -2,6 +2,8 @@
 // (see classify.js). `label` is the button text used when Sam asks "Did you mean …?".
 // Examples are the classifier's training data – the held-out test set lives separately in test/.
 
+import { EXTRA } from "./intents-extra.js";
+
 export const GROUPS = {
   shop: "Shopping",
   advice: "Shaving & beard advice",
@@ -579,6 +581,8 @@ export const CATEGORIES = [
     what time is it
   `),
 ];
+
+for (const c of CATEGORIES) if (EXTRA[c.id]) c.examples.push(...EXTRA[c.id].filter((e) => !c.examples.includes(e)));
 
 export const BY_CAT = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]));
 

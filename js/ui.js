@@ -63,6 +63,7 @@ export class UI {
     });
   }
   step(n) {
+    $("#steps").dataset.label = `Step ${n} of ${STEPS.length} · ${STEPS[n - 1]}`;
     document.querySelectorAll("#steps li").forEach((li, i) => { li.classList.toggle("done", i + 1 < n); li.classList.toggle("now", i + 1 === n); });
   }
   signal(field, use) {
@@ -219,14 +220,24 @@ export class UI {
   }
   consultResult(a) {
     const lvl = (v) => (v < 0.3 ? "low" : v < 0.6 ? "medium" : "high");
-    const g = a.findings.map((f) => `<button type="button" class="gauge ${f.key}" data-k="${f.key}" aria-pressed="false"><span class="lbl"><span>${f.label}</span><span>${lvl(f.value)}</span></span><span class="bar"><i style="width:${Math.round(8 + f.value * 92)}%"></i></span><span class="txt">${esc(f.text)}</span></button>`).join("");
-    const layers = a.layers ? Object.entries({ beard: "Beard", redness: "Redness", shine: "Shine", texture: "Texture" }).filter(([k]) => a.layers[k]) : [];
+    // a photo that fails the quality gate gets a retake request instead of numbers that would only be guesses
+    const retake = !!a.retake;
+    const conf = (f) => (f.confidenceLabel ? `<span class="conf" data-c="${f.confidenceLabel}" title="How sure the check is, given the photo">${f.confidenceLabel} confidence</span>` : "");
+    const g = retake ? "" : a.findings.map((f) => `<button type="button" class="gauge ${f.key}" data-k="${f.key}" aria-pressed="false"><span class="lbl"><span>${f.label}</span><span>${lvl(f.value)}</span></span><span class="bar"><i style="width:${Math.round(8 + f.value * 92)}%"></i></span>${conf(f)}<span class="txt">${esc(f.text)}</span></button>`).join("");
+    const layers = a.layers && !retake ? Object.entries({ beard: "Beard", redness: "Redness", shine: "Shine", texture: "Texture" }).filter(([k]) => a.layers[k]) : [];
     const chips = layers.length ? `<div class="layer-chips" role="group" aria-label="Show on photo"><button type="button" data-l="" aria-pressed="true">Zones</button>${layers.map(([k, l]) => `<button type="button" data-l="${k}" aria-pressed="false">${l}</button>`).join("")}</div>` : "";
-    this.wide(`<div class="card consult"><div class="card-head"><h4>Your skin &amp; beard check</h4><span class="small muted">${a.source === "ai" ? "AI analysis" : "on-device"}</span></div>
-      <div class="shot"><canvas></canvas><span class="badge">${esc(a.beardLabel)}</span></div>${chips}
+    const note = retake
+      ? `<div class="retake" role="status"><p><b>Let's take that again.</b> ${esc(a.qualityText || "The photo isn't clear enough for a reliable skin check.")}</p>
+        <div class="row"><button type="button" class="btn" data-p="camera">${icon("camera")}<span>Take a new selfie</span></button><label class="btn ghost">${icon("upload")}<span>Upload another</span><input type="file" accept="image/*" hidden></label></div></div>`
+      : a.qualityText ? `<p class="quality-note small">${esc(a.qualityText)}</p>` : "";
+    const badge = retake ? `${a.beardLabel}?` : a.beardLabel;
+    this.wide(`<div class="card consult${retake ? " is-retake" : ""}"><div class="card-head"><h4>Your skin &amp; beard check</h4><span class="small muted">${a.source === "ai" ? "AI analysis" : "on-device"}</span></div>
+      <div class="shot"><canvas></canvas><span class="badge">${esc(badge)}</span></div>${chips}${note}
       <p class="consult-hint small muted">${layers.length ? "Tap a result or a layer to see where it was measured." : ""}</p>
       <div class="gauges">${g}</div>
       <div class="privacy">${icon("lock")} ${a.source === "ai" ? "Analysed by Claude in your own account – not stored by this page." : "Analysed on your device – the photo was not uploaded."} Not a medical diagnosis.</div></div>`).then((d) => {
+      d.querySelector(".retake [data-p=camera]")?.addEventListener("click", () => this.h.camera());
+      d.querySelector(".retake input")?.addEventListener("change", (e) => e.target.files[0] && this.h.photoFile(e.target.files[0]));
       const c = d.querySelector("canvas");
       const img = a.image;
       const iw = img.naturalWidth || a.width, ih = img.naturalHeight || a.height;

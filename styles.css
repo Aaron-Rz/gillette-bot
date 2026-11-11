@@ -368,3 +368,72 @@ body.drawer-open { overflow: hidden; }
 .drawer[hidden], [hidden] { display: none !important; }
 .flow-link { display: block; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--line); color: var(--chip-ink); font: 700 12px var(--head); text-transform: uppercase; letter-spacing: .06em; text-decoration: none; }
 .flow-link:hover { border-color: var(--btn); }
+
+/* ======================= v4: same quality on every device ======================= */
+/* App shell fills the visible viewport (follows the on-screen keyboard via --app-h, set in main.js). */
+html, body { height: 100%; }
+body { display: flex; flex-direction: column; height: var(--app-h, 100dvh); min-height: 0; overflow: hidden; }
+.concept { flex: none; font-size: 12px; }
+.page { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) 320px; max-width: 1140px; width: 100%; margin: 0 auto; }
+.chat, .crm { height: 100%; min-height: 0; }
+@media (min-width: 1200px) { .page { grid-template-columns: minmax(0, 760px) 360px; } }
+@media (min-width: 1200px) and (min-height: 900px) { .page { padding-block: 28px; } }
+.log { padding-inline: clamp(12px, 3vw, 24px); }
+@media (min-width: 700px) { .msg { max-width: 78%; } }
+
+/* Minimum readable text: nothing below 12px. */
+.steps li, .chip, .line-tag, .routine .role, .ind, .promo, .mini-add, .cmp thead b, .cmp tbody th, .consult .badge, .gauge .lbl, .privacy,
+.ticket .type, .track div, .crm h3, .tag, .hist span, .hist em, .seg button, .seg-label, .guide h6, .btn.small, .store em, .opt,
+.layer-chips button, .shade-row .natural { font-size: 12px; }
+.steps li { letter-spacing: .03em; }
+/* Narrow screens: bars only + "Step n/6 · Name" label instead of six squeezed labels. */
+.steps::after { content: attr(data-label); display: none; grid-column: 1 / -1; font: 700 12px var(--head); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2); text-align: center; margin-top: 2px; }
+@media (max-width: 600px) {
+  .steps { padding: 8px 12px 6px; }
+  .steps li { font-size: 0; padding-top: 4px; }
+  .steps::after { display: block; }
+}
+.entry select { min-height: 44px; }
+
+/* Touch screens: every control at least 44px. */
+@media (pointer: coarse) {
+  .opt, .btn, .icon-btn, .seg button, .layer-chips button, .mini-add, .store-tools input, .btn.small { min-height: 44px; }
+  .icon-btn { min-width: 44px; height: 44px; }
+  .qty button { width: 44px; height: 44px; }
+  .shade-row button { min-width: 44px; min-height: 44px; }
+  .attach, .send { min-width: 44px; min-height: 44px; }
+}
+@media (max-width: 360px) { .icon-btn { min-width: 40px; padding: 0 6px; } }
+
+/* Mobile: no fixed heights – the shell already fills the screen. */
+@media (max-width: 880px) {
+  .page { padding: 0; grid-template-columns: minmax(0, 1fr); }
+  .chat { height: 100%; }
+  .crm { height: 78%; }
+}
+
+/* Short landscape phones: compact chrome, chat gets the room. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .concept { display: none; }
+  .top { padding-block: 6px; }
+  .mark { width: 32px; height: 32px; }
+  .sub { display: none; }
+  .steps { padding: 4px 12px 2px; }
+  .steps li { font-size: 0; padding-top: 2px; }
+  .steps::after { display: none; }
+  .hero { padding: 10px 12px; }
+  .hero h1 { font-size: 20px; }
+  /* AR / selfie modal: picture left, controls right */
+  .modal-card { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); height: 100%; max-height: 100%; width: 100%; overflow: hidden; }
+  .modal-head { grid-column: 1 / -1; padding-block: 6px; }
+  .stage { aspect-ratio: auto; height: 100%; min-height: 0; }
+  #modal-controls { overflow-y: auto; min-height: 0; }
+}
+/* Phone portrait: give the camera picture more height in the modal. */
+@media (max-width: 600px) and (orientation: portrait) {
+  .stage { aspect-ratio: 3 / 4; max-height: 56dvh; }
+}
+.consult .layer-chips button, .modal .shade-row .natural { font-size: 12px; }
+.signals code { font-size: 12px; }
+/* live camera on portrait phones: fill the stage (photos are already framed around the face) */
+@media (orientation: portrait) and (max-width: 600px) { .stage.live canvas { object-fit: cover; } }

@@ -3,7 +3,8 @@
 // against the example phrasings, boosted by the precise regex intents in nlu.js.
 // Optionally blended with sentence embeddings (embed.js) when they are loaded.
 import { normalize, correctToken, parse, osa } from "./nlu.js";
-import { CATEGORIES, INTENT_TO_CAT } from "./intents.js";
+import { CATEGORIES, INTENT_TO_CAT, BY_CAT } from "./intents.js";
+import { FOLLOW } from "./context.js";
 
 const STOP = new Set(`a an the i me my mine you your yours it its is are was were be been am do does did to of in on at for with and or but so
 this that these those there here just really very please can could would will shall should may might im i'm it's its' we our us they them he she his her
@@ -73,6 +74,7 @@ const SYN = {
   irritee: "irritat", geirriteerd: "irritat", brule: "burn", brandt: "burn", brennt: "burn", rougeur: "red", roodheid: "red",
   pousse: "grow", groeien: "grow", wachsen: "grow", gratte: "itch", jeukt: "itch", juckt: "itch", jeuk: "itch",
   photos: "photo", fotos: "photo",
+  itches: "itch", itchy: "itch", itched: "itch", scratchy: "itch", juckreiz: "itch", demangeaison: "itch", demangeaisons: "itch",
   conseillez: "recommend", conseilles: "recommend", adviseer: "recommend", advies: "recommend",
   wachtwoord: "password", passwort: "password", inloggen: "login", aanmelden: "login", anmelden: "login", connecter: "login", connexion: "login",
   seche: "dry", droog: "dry", trocken: "dry", reche: "rough", ruw: "rough",
@@ -118,6 +120,15 @@ function fix(w) {
     if (d < bd || (d === bd && f > bf)) { best = v; bd = d; bf = f; }
   }
   return bd <= max ? best : correctToken(w);
+}
+
+let VOC_IN = null;
+/** Share of words in a message that Sam knows at all (example vocabulary, synonyms or common words). */
+export function knownShare(text) {
+  const raw = normalize(text).replace(/['.#+-]/g, " ").split(/\s+/).filter(Boolean);
+  if (!raw.length) return 0;
+  if (!VOC_IN) { VOC_IN = new Set(); for (const c of CATEGORIES) if (c.id !== "out_of_scope") for (const ex of c.examples) for (const w of normalize(ex).replace(/['.#+-]/g, " ").split(/\s+/)) if (w) VOC_IN.add(w); }
+  return raw.filter((w) => VOC_IN.has(w) || SYN[w] || STOP.has(w) || VOC_IN.has(fix(w))).length / raw.length;
 }
 
 export function tokens(text) {
@@ -191,17 +202,33 @@ export function classify(text, opts = {}) {
     const cat = INTENT_TO_CAT[it.name];
     if (cat && scores[cat] !== undefined) scores[cat] += Math.min(0.45, 0.13 * it.score);
   }
+  // conversation context: short follow-ups lean towards the topic just discussed
+  if (opts.context && BY_CAT[opts.context]) {
+    const near = new Set(FOLLOW[opts.context] || []);
+    const grp = BY_CAT[opts.context].group;
+    const short = tokens(text).length <= 8;
+    for (const c of CATEGORIES) {
+      if (c.id === opts.context || near.has(c.id)) scores[c.id] += short ? 0.12 : 0.06;
+      else if (c.group === grp && grp !== "meta") scores[c.id] += short ? 0.05 : 0.02;
+    }
+  }
+  // "how much is delivery" / "combien coûte la livraison" is delivery info, not a product price
+  if (/\b(deliver\w*|shipping|livraison|levering|lieferung|bezorg\w*)\b/.test(parsed.fixed) && scores.price > scores.delivery_info) scores.delivery_info = scores.price + 0.05;
+  // an explicit farewell ("merci, bonne journée") ends the chat even if it also contains a greeting word
+  if (parsed.intents.some((i) => i.name === "bye" && i.score >= 3)) scores.bye = Math.max(...Object.values(scores)) + 0.1;
   // semantic layer (optional)
   if (opts.semantic) for (const [id, s] of Object.entries(opts.semantic)) if (scores[id] !== undefined) scores[id] = 0.45 * scores[id] + 0.55 * s;
   const ranked = Object.entries(scores).map(([id, score]) => ({ id, score })).sort((a, b) => b.score - a.score);
   const top = ranked[0];
-  return { ranked, top: top.score > 0 ? top.id : null, score: top.score, margin: top.score - (ranked[1]?.score || 0), parsed };
+  const ctxHit = !!(opts.context && top && (top.id === opts.context || (FOLLOW[opts.context] || []).includes(top.id)));
+  return { ranked, top: top.score > 0 ? top.id : null, score: top.score, margin: top.score - (ranked[1]?.score || 0), parsed, ctxHit };
 }
 
 /** act | clarify | guide */
 export function decide(r) {
   if (!r.top) return "guide";
   if (r.score >= 0.5 && r.margin >= 0.08) return "act";
+  if (r.ctxHit && r.score >= 0.42 && r.margin >= 0.15) return "act"; // a clear follow-up to the topic just discussed
   if (r.score >= 0.62) return "act";
   if (r.score >= 0.15) return "clarify";
   return "guide";

@@ -89,6 +89,7 @@ const arState = { style: "short", shade: "natural", natural: null, photo: null, 
 const shadeValue = () => (arState.shade === "natural" ? arState.natural || SHADES.brown : arState.shade);
 
 function stopModal() {
+  stage.parentElement.classList.remove("live");
   if (stopLive) { stopLive(); stopLive = null; }
   modal.hidden = true;
 }
@@ -122,6 +123,7 @@ function renderControls(mode) {
 }
 
 async function usePhotoInAR(file) {
+  stage.parentElement.classList.remove("live");
   if (stopLive) { stopLive(); stopLive = null; }
   const img = await loadImage(file).catch(() => null);
   if (!img) { msg.textContent = "Couldn't open that file – try a JPG or PNG."; return; }
@@ -177,6 +179,7 @@ async function openModal(mode, style) {
   try {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error("no camera API");
     stopLive = await startLive(video, stage, () => (mode === "snap" ? { style: "clean" } : { style: arState.style, shade: shadeValue() }), (lm, vid) => { if (!arState.natural) naturalFromFrame(lm, vid); });
+    stage.parentElement.classList.add("live");
     msg.textContent = stage.dataset.tracking === "0" && mode !== "snap" ? "Face tracking isn't available in this browser – please try Chrome or Safari." : mode === "snap" ? "" : "Turn your head a little – the beard follows your face and the light.";
     setTimeout(() => { if (msg.textContent.startsWith("Turn")) msg.textContent = ""; }, 4000);
   } catch (e) {
@@ -224,3 +227,17 @@ initAI((t) => { const s = $("#ai-status"); s.textContent = t; s.hidden = false; 
   ai = a;
   bot.opts.ai = a;
 }).catch(() => {});
+
+// ---------- viewport: keep the composer above the on-screen keyboard (iOS/Android) ----------
+(() => {
+  const vv = window.visualViewport;
+  const set = () => {
+    document.documentElement.style.setProperty("--app-h", `${Math.round(vv ? vv.height : window.innerHeight)}px`);
+    if (vv && vv.offsetTop) window.scrollTo(0, 0);
+    const log = document.getElementById("log");
+    if (log && document.activeElement?.id === "text") log.scrollTop = log.scrollHeight;
+  };
+  set();
+  (vv || window).addEventListener("resize", set);
+  window.addEventListener("orientationchange", () => setTimeout(set, 250));
+})();
